@@ -1,0 +1,411 @@
+{
+  "adapter": {
+    "id": "civic-fixture",
+    "label": "Civic demo fixture (East of Leisure Town)",
+    "status": "fixture",
+    "note": "Seed data adapted from OpenSolano's public Atlas context. Demo only; not an official record."
+  },
+  "sources": [
+    {
+      "id": "eltsp-growth-page",
+      "title": "East of Leisure Town Growth Area Specific Plan",
+      "publisher": "City of Vacaville Community Development",
+      "url": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning",
+      "kind": "Project record",
+      "status": "linked"
+    },
+    {
+      "id": "eltsp-parks-report-2026-09-09",
+      "title": "Parks and Recreation Commission staff report, Item 3A",
+      "publisher": "City of Vacaville",
+      "url": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning",
+      "kind": "Staff report",
+      "published": "2026-09-09",
+      "status": "indexed"
+    },
+    {
+      "id": "vacaville-checkbook-2026-04-08",
+      "title": "Vacaville checkbook export",
+      "publisher": "City of Vacaville",
+      "url": "https://opensolano.org/assets/data/checkbook_data_2026-04-08.csv",
+      "kind": "Financial dataset",
+      "published": "2026-04-08",
+      "status": "indexed"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "civic:eltsp:entity:council",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [0, 1],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["org:vacaville-city-council"],
+      "payload": {
+        "entity": {"ref": "org:vacaville-city-council", "label": "Vacaville City Council", "kind": "body"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:plan",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [0, 2],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["plan:eltsp"],
+      "payload": {
+        "entity": {"ref": "plan:eltsp", "label": "East of Leisure Town Specific Plan", "kind": "plan", "geo": {"lat": 38.3566, "lng": -121.955}}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:commission",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [0, 3],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["org:parks-commission"],
+      "payload": {
+        "entity": {"ref": "org:parks-commission", "label": "Parks and Recreation Commission", "kind": "body"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:policy-pr-p1-8",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [0, 4],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["policy:gp-pr-p1.8"],
+      "payload": {
+        "entity": {"ref": "policy:gp-pr-p1.8", "label": "General Plan policy PR-P1.8", "kind": "policy"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:goal-quality-of-life",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [0, 5],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["goal:quality-of-life"],
+      "payload": {
+        "entity": {"ref": "goal:quality-of-life", "label": "Quality of Life (strategic goal)", "kind": "goal"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:community-park",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [0, 6],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["place:eltsp-community-park"],
+      "payload": {
+        "entity": {"ref": "place:eltsp-community-park", "label": "Proposed split community park", "kind": "place"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "proposed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:northern-trail",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [0, 7],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["place:northern-trail"],
+      "payload": {
+        "entity": {"ref": "place:northern-trail", "label": "Northern trail connection", "kind": "place"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "proposed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:pedestrian-bridge",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [0, 8],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["place:pedestrian-bridge"],
+      "payload": {
+        "entity": {"ref": "place:pedestrian-bridge", "label": "Pedestrian bridge", "kind": "place"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "proposed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:carroll-way",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [0, 9],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["place:carroll-way"],
+      "payload": {
+        "entity": {"ref": "place:carroll-way", "label": "Carroll Way alignment", "kind": "place"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:eir",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [0, 10],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["doc:eltsp-eir"],
+      "payload": {
+        "entity": {"ref": "doc:eltsp-eir", "label": "ELTSP Environmental Impact Report", "kind": "document"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:entity:fund-cd-eltsp",
+      "source_id": "vacaville-checkbook-2026-04-08",
+      "stream_id": "checkbook",
+      "sequence": [0, 11],
+      "event_type": "civic.entity.registered",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["fund:cd-east-of-leisure-town-growth"],
+      "payload": {
+        "entity": {"ref": "fund:cd-east-of-leisure-town-growth", "label": "CD–East of Leisure Town Growth (fund label)", "kind": "money"}
+      },
+      "provenance": {"uri": "https://opensolano.org/assets/data/checkbook_data_2026-04-08.csv"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:2024-04-09:plan-initiated",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [1, 1],
+      "event_type": "civic.plan.initiated",
+      "occurred_at": "2024-04-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "actor_ref": "org:vacaville-city-council",
+      "subject_refs": ["plan:eltsp"],
+      "payload": {
+        "title": "Planning process initiated",
+        "summary": "City Council initiated the Specific Plan and General Plan Amendment process for the East of Leisure Town growth area and adopted guiding principles.",
+        "relationship": {"from": "org:vacaville-city-council", "verb": "initiated", "to": "plan:eltsp"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "adopted"
+    },
+    {
+      "event_id": "civic:eltsp:2024-08-13:contracts-approved",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [2, 1],
+      "event_type": "civic.contract.approved",
+      "occurred_at": "2024-08-13T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "actor_ref": "org:vacaville-city-council",
+      "subject_refs": ["plan:eltsp"],
+      "payload": {
+        "title": "Professional-services contracts approved",
+        "summary": "Council approved contracts for planning support, funded by the applicant team."
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "adopted"
+    },
+    {
+      "event_id": "civic:eltsp:2025-06-24:council-direction",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [3, 1],
+      "event_type": "civic.direction.given",
+      "occurred_at": "2025-06-24T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "actor_ref": "org:vacaville-city-council",
+      "subject_refs": ["plan:eltsp", "place:carroll-way"],
+      "payload": {
+        "title": "Council direction on small parks",
+        "summary": "Council considered park-size flexibility, the Carroll Way alignment, and housing affordability.",
+        "relationship": {"from": "org:vacaville-city-council", "verb": "gave direction on", "to": "place:carroll-way"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "adopted"
+    },
+    {
+      "event_id": "civic:eltsp:2025-11-21:eir-nop",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [4, 1],
+      "event_type": "civic.eir.notice_of_preparation",
+      "occurred_at": "2025-11-21T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["doc:eltsp-eir", "plan:eltsp"],
+      "payload": {
+        "title": "EIR notice of preparation",
+        "summary": "The City issued a notice of preparation for the project environmental impact report.",
+        "relationship": {"from": "doc:eltsp-eir", "verb": "evaluates", "to": "plan:eltsp"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:eltsp:2026-01-29:workshop",
+      "source_id": "eltsp-growth-page",
+      "stream_id": "eltsp",
+      "sequence": [5, 1],
+      "event_type": "civic.workshop.held",
+      "occurred_at": "2026-01-29T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["plan:eltsp"],
+      "payload": {
+        "title": "Community workshop",
+        "summary": "The City gathered feedback on draft land use, transportation, parks, and open space."
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning"},
+      "truth_state": "observed"
+    },
+    {
+      "event_id": "civic:checkbook:2026-04-08:eltsp-spending",
+      "source_id": "vacaville-checkbook-2026-04-08",
+      "stream_id": "checkbook",
+      "sequence": [6, 1],
+      "event_type": "civic.spending.indexed",
+      "occurred_at": "2026-04-08T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["fund:cd-east-of-leisure-town-growth", "plan:eltsp"],
+      "payload": {
+        "title": "Checkbook records indexed for the growth-area fund label",
+        "summary": "37 checkbook records totaling $348,571.94 carry the CD–East of Leisure Town Growth fund label in the indexed export.",
+        "relationship": {"from": "fund:cd-east-of-leisure-town-growth", "verb": "funds work on", "to": "plan:eltsp"},
+        "record_count": 37,
+        "total_usd": 348571.94
+      },
+      "provenance": {"uri": "https://opensolano.org/assets/data/checkbook_data_2026-04-08.csv", "filter": "fund label = CD–East of Leisure Town Growth"},
+      "truth_state": "reported"
+    },
+    {
+      "event_id": "civic:eltsp:2026-09-09:parks-report",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [7, 1],
+      "event_type": "civic.report.published",
+      "occurred_at": "2026-09-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "actor_ref": "org:parks-commission",
+      "subject_refs": ["plan:eltsp"],
+      "payload": {
+        "title": "Parks Commission context review",
+        "summary": "Staff identified the park/detention interface, northern trail dead ends, and community-park phasing for Commission input."
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "reported"
+    },
+    {
+      "event_id": "civic:eltsp:2026-09-09:policy-calls-for",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [7, 2],
+      "event_type": "civic.relationship.asserted",
+      "occurred_at": "2026-09-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["policy:gp-pr-p1.8", "plan:eltsp"],
+      "payload": {
+        "title": "General Plan policy PR-P1.8 calls for a linked open-space, park, and trail system",
+        "summary": "The staff report cites PR-P1.8 as the policy basis for a connected park and trail network inside the plan area.",
+        "relationship": {"from": "policy:gp-pr-p1.8", "verb": "calls for a linked park and trail system in", "to": "plan:eltsp"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A, Open Space Areas and Trails"},
+      "truth_state": "reported"
+    },
+    {
+      "event_id": "civic:eltsp:2026-09-09:goal-advanced-through",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [7, 3],
+      "event_type": "civic.relationship.asserted",
+      "occurred_at": "2026-09-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["goal:quality-of-life", "place:eltsp-community-park"],
+      "payload": {
+        "title": "Quality of Life is advanced through park access",
+        "summary": "The report frames park, trail, and recreation access as how the Quality of Life strategic goal becomes concrete.",
+        "relationship": {"from": "goal:quality-of-life", "verb": "is advanced through", "to": "place:eltsp-community-park"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "reported"
+    },
+    {
+      "event_id": "civic:eltsp:2026-09-09:park-acreage-gap",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [7, 4],
+      "event_type": "civic.gap.reported",
+      "occurred_at": "2026-09-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["place:eltsp-community-park", "plan:eltsp"],
+      "payload": {
+        "title": "Draft public parks fall 11.34 acres below the reported minimum",
+        "summary": "Draft ELTSP public parks are 11.34 acres below the reported minimum neighborhood and community park requirement.",
+        "relationship": {"from": "place:eltsp-community-park", "verb": "falls 11.34 acres short within", "to": "plan:eltsp"},
+        "acres_short": 11.34
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "reported"
+    },
+    {
+      "event_id": "civic:eltsp:2026-09-09:split-park-dependency",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [7, 5],
+      "event_type": "civic.dependency.proposed",
+      "occurred_at": "2026-09-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["place:eltsp-community-park", "place:pedestrian-bridge"],
+      "payload": {
+        "title": "Split community park depends on a pedestrian bridge and coordinated phasing",
+        "summary": "The proposed split community park only works as one park if a pedestrian bridge is delivered and phases are coordinated.",
+        "relationship": {"from": "place:eltsp-community-park", "verb": "depends on", "to": "place:pedestrian-bridge"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "proposed"
+    },
+    {
+      "event_id": "civic:eltsp:2026-09-09:northern-trail-dead-ends",
+      "source_id": "eltsp-parks-report-2026-09-09",
+      "stream_id": "eltsp",
+      "sequence": [7, 6],
+      "event_type": "civic.issue.identified",
+      "occurred_at": "2026-09-09T00:00:00Z",
+      "observed_at": "2026-09-10T16:00:00Z",
+      "subject_refs": ["place:northern-trail", "plan:eltsp"],
+      "payload": {
+        "title": "Northern trail dead ends identified",
+        "summary": "Staff flagged trail segments on the north side of the plan area that currently end without a connection.",
+        "relationship": {"from": "place:northern-trail", "verb": "dead-ends inside", "to": "plan:eltsp"}
+      },
+      "provenance": {"uri": "https://www.cityofvacaville.gov/government/community-development/planning-and-development/growth-areas-planning", "section": "Item 3A"},
+      "truth_state": "reported"
+    }
+  ]
+}
