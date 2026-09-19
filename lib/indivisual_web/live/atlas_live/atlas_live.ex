@@ -66,7 +66,11 @@ defmodule IndivisualWeb.AtlasLive do
      |> assign(:live?, connected?(socket))
      |> assign(:feed_status, Feed.status())
      |> assign(:annotation_form, blank_annotation_form())
-     |> assign(:annotation_errors, [])}
+     |> assign(:annotation_errors, [])
+     |> assign(:range_from, nil)
+     |> assign(:range_to, nil)
+     |> assign(:show_all, false)
+     |> assign(:all_events, [])}
   end
 
   @impl true
@@ -88,6 +92,9 @@ defmodule IndivisualWeb.AtlasLive do
      |> assign(:source_filter, source_filter)
      |> assign(:entity, blank_to_nil(params["entity"]))
      |> assign(:requested_event, blank_to_nil(params["event"]))
+     |> assign(:range_from, parse_index(params["from"]))
+     |> assign(:range_to, parse_index(params["to"]))
+     |> assign(:show_all, params["all"] == "1")
      |> load()}
   end
 
@@ -113,6 +120,39 @@ defmodule IndivisualWeb.AtlasLive do
       :error ->
         {:noreply, socket}
     end
+  end
+
+  # The range is a FILTER, not a selection: it narrows which events the whole
+  # page reads. Either bound may be nil, which is what makes it open-ended.
+  def handle_event("range", params, socket) do
+    total = length(socket.assigns.all_events)
+
+    from = clamp_index(parse_index(params["from"]), total)
+    to = clamp_index(parse_index(params["to"]), total)
+
+    # A dragged-past bound is a reversed range; swap rather than reject it, so
+    # the dial never feels stuck.
+    {from, to} =
+      case {from, to} do
+        {f, t} when is_integer(f) and is_integer(t) and f > t -> {t, f}
+        pair -> pair
+      end
+
+    {:noreply, patch(socket, from: from, to: to, event: nil)}
+  end
+
+  def handle_event("toggle_all", _params, socket) do
+    if socket.assigns.show_all do
+      {:noreply, patch(socket, all: false)}
+    else
+      # "All" clears the window rather than remembering it: one visible control,
+      # one meaning.
+      {:noreply, patch(socket, all: true, from: nil, to: nil, event: nil)}
+    end
+  end
+
+  def handle_event("clear_range", _params, socket) do
+    {:noreply, patch(socket, from: nil, to: nil, event: nil)}
   end
 
   def handle_event("step", %{"dir" => dir}, socket) do
@@ -196,7 +236,15 @@ defmodule IndivisualWeb.AtlasLive do
 
     sources = if filter == [], do: nil, else: filter
 
-    events = Feed.events(Feed, sources: sources)
+    # `all_events` is the source-filtered stream the timeline scrubs over;
+    # `events` is that stream narrowed to the selected range. The timeline
+    # needs the full extent to draw against, so both are kept.
+    all_events = Feed.events(Feed, sources: sources)
+
+    events =
+      if socket.assigns.show_all,
+        do: all_events,
+        else: slice_range(all_events, socket.assigns.range_from, socket.assigns.range_to)
 
     selected =
       Enum.find(events, &(&1.event_id == requested)) || List.last(events)
@@ -213,6 +261,7 @@ defmodule IndivisualWeb.AtlasLive do
     all_relationships = Topology.relationships(events)
 
     socket
+    |> assign(:all_events, all_events)
     |> assign(:events, events)
     |> assign(:selected, selected)
     |> assign(:selected_index, selected_index)
@@ -254,11 +303,49 @@ defmodule IndivisualWeb.AtlasLive do
       projection: socket.assigns.projection,
       event: selected_id(socket),
       entity: socket.assigns.entity,
-      sources: socket.assigns.source_filter
+      sources: socket.assigns.source_filter,
+      from: socket.assigns[:range_from],
+      to: socket.assigns[:range_to],
+      all: socket.assigns[:show_all]
     }
 
     next = Map.merge(current, Map.new(changes))
     push_patch(socket, to: path_for(next))
+  end
+
+  # --- timeline range ---
+
+  defp parse_index(nil), do: nil
+  defp parse_index(""), do: nil
+
+  defp parse_index(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {i, _} when i >= 0 -> i
+      _ -> nil
+    end
+  end
+
+  defp parse_index(i) when is_integer(i) and i >= 0, do: i
+  defp parse_index(_), do: nil
+
+  defp clamp_index(nil, _total), do: nil
+  defp clamp_index(_i, 0), do: nil
+  defp clamp_index(i, total), do: i |> max(0) |> min(total - 1)
+
+  # Either bound may be nil — that is what "open ended either way" means: a
+  # nil start reads from the beginning, a nil end runs to the present.
+  defp slice_range(events, nil, nil), do: events
+
+  defp slice_range(events, from, to) do
+    last = length(events) - 1
+    first = from || 0
+    final = to || last
+
+    if first > final or events == [] do
+      []
+    else
+      Enum.slice(events, first..final)
+    end
   end
 
   defp share_path(socket, selected) do
@@ -266,11 +353,14 @@ defmodule IndivisualWeb.AtlasLive do
       projection: socket.assigns.projection,
       event: selected && selected.event_id,
       entity: socket.assigns.entity,
-      sources: socket.assigns.source_filter
+      sources: socket.assigns.source_filter,
+      from: socket.assigns.range_from,
+      to: socket.assigns.range_to,
+      all: socket.assigns.show_all
     })
   end
 
-  defp path_for(%{projection: projection, event: event, entity: entity, sources: sources}) do
+  defp path_for(%{projection: projection, event: event, entity: entity, sources: sources} = opts) do
     query =
       []
       |> maybe_put(
@@ -280,6 +370,9 @@ defmodule IndivisualWeb.AtlasLive do
       |> maybe_put(:event, event)
       |> maybe_put(:entity, entity)
       |> maybe_put(:sources, if(sources in [nil, []], do: nil, else: Enum.join(sources, ",")))
+      |> maybe_put(:from, opts[:from])
+      |> maybe_put(:to, opts[:to])
+      |> maybe_put(:all, if(opts[:all], do: "1", else: nil))
 
     ~p"/atlas?#{query}"
   end
@@ -341,6 +434,31 @@ defmodule IndivisualWeb.AtlasLive do
   @doc "Date portion of a datetime, or `—`."
   def date(nil), do: "—"
   def date(%DateTime{} = dt), do: Calendar.strftime(dt, "%Y-%m-%d")
+
+  @doc "Date at one index of the timeline, for a range dial's accessible value."
+  def index_label(events, index) do
+    case Enum.at(events, index) do
+      nil -> "—"
+      event -> date(Event.effective_time(event))
+    end
+  end
+
+  @doc """
+  Human label for the selected range. An open bound is named as open rather
+  than silently filled in with the extent.
+  """
+  def range_label(events, from, to) do
+    last = max(length(events) - 1, 0)
+
+    start_text = if from, do: index_label(events, from), else: "start"
+    end_text = if to, do: index_label(events, to), else: "now"
+
+    cond do
+      is_nil(from) and is_nil(to) -> "full range"
+      from == to -> index_label(events, from || last)
+      true -> "#{start_text} → #{end_text}"
+    end
+  end
 
   @doc "Full ISO timestamp, or `—`."
   def stamp(nil), do: "—"

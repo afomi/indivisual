@@ -79,6 +79,157 @@ would be a good way to break it silently. --%>
       </div>
     </header>
 
+    <%!-- ============ Timeline: full-width, above the columns ============ --%>
+    <%!-- Its own element at 100% width, holding exactly two controls: an "all
+    events" toggle, and a range with two dials. Either bound may be left open,
+    so the range reads "from the beginning" or "to the present" rather than
+    forcing a window. --%>
+    <section
+      id="atlas-timeline"
+      class="atlas-timeline"
+      aria-label="Timeline"
+    >
+      <div class="atlas-timeline__bar">
+        <h2 class="atlas-timeline__title">
+          Timeline
+        </h2>
+
+        <label
+          id="atlas-timeline-all"
+          class="atlas-timeline__toggle"
+        >
+          <input
+            type="checkbox"
+            phx-click="toggle_all"
+            checked={@show_all}
+            aria-describedby="atlas-timeline-readout"
+          />
+          <span>All events</span>
+        </label>
+
+        <p
+          id="atlas-timeline-readout"
+          class="atlas-timeline__readout"
+        >
+          <%= if @all_events == [] do %>
+            No events.
+          <% else %>
+            <%= if @show_all do %>
+              Showing all {length(@all_events)}
+            <% else %>
+              Showing {length(@events)} of {length(@all_events)}
+              <%= if @range_from || @range_to do %>
+                · {range_label(@all_events, @range_from, @range_to)}
+              <% else %>
+                · full range
+              <% end %>
+            <% end %>
+          <% end %>
+        </p>
+
+        <div class="atlas-timeline__actions">
+          <button
+            type="button"
+            phx-click="step"
+            phx-value-dir="prev"
+            aria-label="Previous event"
+          >
+            ← Prev
+          </button>
+          <button
+            type="button"
+            phx-click="step"
+            phx-value-dir="next"
+            aria-label="Next event"
+          >
+            Next →
+          </button>
+          <%= if @range_from || @range_to do %>
+            <button
+              type="button"
+              phx-click="clear_range"
+              id="atlas-timeline-clear"
+            >
+              Clear range
+            </button>
+          <% end %>
+        </div>
+      </div>
+
+      <form
+        phx-change="range"
+        id="atlas-timeline-range"
+        class={["atlas-timeline__range", @show_all && "is-disabled"]}
+      >
+        <label
+          for="atlas-timeline-from"
+          class="sr-only"
+        >
+          Range start
+        </label>
+        <input
+          id="atlas-timeline-from"
+          type="range"
+          name="from"
+          min="0"
+          max={max(length(@all_events) - 1, 0)}
+          value={@range_from || 0}
+          disabled={@show_all}
+          aria-valuetext={index_label(@all_events, @range_from || 0)}
+        />
+        <label
+          for="atlas-timeline-to"
+          class="sr-only"
+        >
+          Range end
+        </label>
+        <input
+          id="atlas-timeline-to"
+          type="range"
+          name="to"
+          min="0"
+          max={max(length(@all_events) - 1, 0)}
+          value={@range_to || max(length(@all_events) - 1, 0)}
+          disabled={@show_all}
+          aria-valuetext={index_label(@all_events, @range_to || max(length(@all_events) - 1, 0))}
+        />
+      </form>
+
+      <%!-- Scrub within the selected range. --%>
+      <form
+        phx-change="scrub"
+        id="atlas-scrubber"
+        class="atlas-timeline__scrub"
+      >
+        <label
+          for="atlas-scrubber-input"
+          class="sr-only"
+        >
+          Timeline scrubber
+        </label>
+        <input
+          id="atlas-scrubber-input"
+          type="range"
+          name="index"
+          min="0"
+          max={max(length(@events) - 1, 0)}
+          value={@selected_index || 0}
+          aria-valuetext={
+            @selected && "#{date(Event.effective_time(@selected))}: #{Event.title(@selected)}"
+          }
+        />
+        <p class="atlas-timeline__position">
+          <%= if @selected do %>
+            {(@selected_index || 0) + 1} of {length(@events)} · {date(
+              Event.effective_time(@selected)
+            )}
+          <% else %>
+            No events match the current filter.
+          <% end %>
+        </p>
+      </form>
+    </section>
+
     <div class="grid gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[17rem_minmax(0,1fr)_25rem]">
       <%!-- ============ Region 1: projection rail ============ --%>
       <aside
@@ -465,72 +616,12 @@ would be a good way to break it silently. --%>
         </details>
       </section>
 
-      <%!-- ============ Region 3: context reader + timeline ============ --%>
+      <%!-- ============ Region 3: context reader ============ --%>
       <section
         id="atlas-reader"
         class="space-y-4"
-        aria-label="Context reader and timeline"
+        aria-label="Context reader"
       >
-        <div class="rounded-lg border border-slate-200 bg-white p-3">
-          <div class="mb-2 flex items-center justify-between">
-            <h2 class="text-sm font-semibold">
-              Timeline
-            </h2>
-            <div class="flex items-center gap-1">
-              <button
-                type="button"
-                phx-click="step"
-                phx-value-dir="prev"
-                class="rounded border border-slate-300 px-2 py-0.5 text-xs"
-                aria-label="Previous event"
-              >
-                ← Prev
-              </button>
-              <button
-                type="button"
-                phx-click="step"
-                phx-value-dir="next"
-                class="rounded border border-slate-300 px-2 py-0.5 text-xs"
-                aria-label="Next event"
-              >
-                Next →
-              </button>
-            </div>
-          </div>
-          <form
-            phx-change="scrub"
-            id="atlas-scrubber"
-          >
-            <label
-              for="atlas-scrubber-input"
-              class="sr-only"
-            >
-              Timeline scrubber
-            </label>
-            <input
-              id="atlas-scrubber-input"
-              type="range"
-              name="index"
-              min="0"
-              max={max(length(@events) - 1, 0)}
-              value={@selected_index || 0}
-              class="w-full"
-              aria-valuetext={
-                @selected && "#{date(Event.effective_time(@selected))}: #{Event.title(@selected)}"
-              }
-            />
-          </form>
-          <p class="mt-1 text-xs text-slate-600">
-            <%= if @selected do %>
-              {(@selected_index || 0) + 1} of {length(@events)} · {date(
-                Event.effective_time(@selected)
-              )}
-            <% else %>
-              No events match the current filter.
-            <% end %>
-          </p>
-        </div>
-
         <%= if @selected do %>
           <article
             id="atlas-selected"

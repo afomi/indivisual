@@ -206,6 +206,96 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    that leaves ragged half-width text in a column that is already narrow. */
 .atlas p { max-width: none; }
 
+/* ── atlas timeline ────────────────────────────────────────────────────── */
+/* A horizontal band across the full width, above the columns — time is the
+   one axis every projection shares, so it gets the whole span rather than a
+   corner of the right rail. Two controls: an "all events" toggle and a range
+   whose bounds may each be left open. */
+
+.atlas-timeline {
+  width: 100%;
+  border-bottom: 1px solid var(--rule);
+  padding: 0.75rem var(--gutter);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.atlas-timeline__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.atlas-timeline__title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.atlas-timeline__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.atlas-timeline__toggle input { margin: 0; cursor: pointer; }
+
+.atlas-timeline__readout {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: none;
+}
+
+/* Pushed to the far edge on a wide screen; wraps under on a narrow one. */
+.atlas-timeline__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-left: auto;
+}
+
+.atlas-timeline__actions button { font-size: 12px; padding: 0.125rem 0.5rem; }
+
+/* The two dials stack so each stays full width and grabbable at any size —
+   a dual-thumb single track needs JS, and two honest inputs keep this
+   keyboard-accessible with no hook. */
+.atlas-timeline__range {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.atlas-timeline__range.is-disabled { opacity: 0.4; }
+
+.atlas-timeline input[type="range"] {
+  width: 100%;
+  margin: 0;
+  /* Comfortably hittable on touch without stretching the band on desktop. */
+  height: 1.5rem;
+}
+
+.atlas-timeline__scrub {
+  display: grid;
+  gap: 0.125rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.5rem;
+}
+
+.atlas-timeline__position {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: none;
+}
+
+@media (max-width: 40rem) {
+  .atlas-timeline__actions { margin-left: 0; width: 100%; }
+}
+
 .atlas .bg-white,
 .atlas .bg-slate-50 { background: transparent !important; }
 
