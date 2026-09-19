@@ -20,10 +20,14 @@ defmodule IndivisualWeb.PageController do
   Three.js scatter with per-city toggles and axis remapping.
   """
   def topo(conn, params) do
+    # An explicit slug always wins. Otherwise prefer the real muni-codes space,
+    # but fall back to ANY space that has scored nodes — so a fresh install
+    # (or a demo seed) shows something instead of an empty volume.
     space =
-      Indivisual.Spaces.get_space_by_slug(
-        params["space_slug"] || Indivisual.MuniCodes.space_slug()
-      )
+      case params["space_slug"] do
+        nil -> default_topo_space()
+        slug -> Indivisual.Spaces.get_space_by_slug(slug)
+      end
 
     axes = Indivisual.Semantic.list_axes(computed_only: true)
 
@@ -96,5 +100,21 @@ defmodule IndivisualWeb.PageController do
           end)
         )
     )
+  end
+
+  # Prefer muni-codes when it has data; otherwise the most recently created
+  # space that has any axis scores at all.
+  defp default_topo_space do
+    muni = Indivisual.Spaces.get_space_by_slug(Indivisual.MuniCodes.space_slug())
+
+    if muni && Indivisual.Semantic.node_scores_for_space(muni) != %{} do
+      muni
+    else
+      Indivisual.Spaces.list_spaces()
+      |> Enum.reverse()
+      |> Enum.find(muni, fn space ->
+        Indivisual.Semantic.node_scores_for_space(space) != %{}
+      end)
+    end
   end
 end

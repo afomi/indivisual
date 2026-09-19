@@ -56,3 +56,10 @@ config :indivisual, Oban, testing: :inline
 
 # No Ollama in test — use the deterministic fake embedding adapter.
 config :indivisual, Indivisual.Embeddings, adapter: Indivisual.Embeddings.Fake
+
+# Dummy GitHub OAuth credentials. Ueberauth raises a CaseClauseError rather
+# than failing gracefully when these are nil, so tests need them set even
+# though no request ever reaches GitHub.
+config :ueberauth, Ueberauth.Strategy.Github.OAuth,
+  client_id: "test-client-id",
+  client_secret: "test-client-secret"

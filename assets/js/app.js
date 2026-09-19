@@ -81,3 +81,10 @@ if (process.env.NODE_ENV === "development") {
   })
 }
 
+// /topo — 3D semantic-axis scatter (three.js). Exposed on window because the
+// topo template is a plain controller-rendered page, not a LiveView hook.
+import { renderTopo } from "./topo"
+
+window.renderTopo = function (selector) {
+  renderTopo(selector)
+}

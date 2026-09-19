@@ -130,9 +130,25 @@ end
 
 # ── GitHub OAuth ──
 # Credentials for the OAuth app; the callback is /auth/github/callback.
-config :ueberauth, Ueberauth.Strategy.Github.OAuth,
-  client_id: System.get_env("GITHUB_CLIENT_ID"),
-  client_secret: System.get_env("GITHUB_CLIENT_SECRET")
+#
+# Guarded: runtime.exs runs AFTER config/test.exs, so an unconditional config
+# here would overwrite the test credentials with nil — and ueberauth raises a
+# CaseClauseError on a nil client_id rather than failing gracefully.
+if github_client_id = System.get_env("GITHUB_CLIENT_ID") do
+  config :ueberauth, Ueberauth.Strategy.Github.OAuth,
+    client_id: github_client_id,
+    client_secret: System.get_env("GITHUB_CLIENT_SECRET")
+end
+
+# In prod the app is unusable without them (GitHub is the only sign-in path),
+# so fail loudly at boot instead of at a user's first click.
+if config_env() == :prod do
+  System.get_env("GITHUB_CLIENT_ID") ||
+    raise "environment variable GITHUB_CLIENT_ID is missing (GitHub is the only sign-in path)"
+
+  System.get_env("GITHUB_CLIENT_SECRET") ||
+    raise "environment variable GITHUB_CLIENT_SECRET is missing"
+end
 
 # ── Encryption at rest ──
 # CLOAK_KEY is base64-encoded 32 bytes. Without it the app cannot decrypt

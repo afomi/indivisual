@@ -1,6 +1,12 @@
+<%!-- NOTE: the interior of this template still carries the Tailwind utility
+classes it was written with in adaptics. The surrounding chrome now follows the
+Swiss/minimal system in assets/css/app.css; converting the remaining ~140 class
+attributes is a separate pass, tracked in PLAN.md. It is deliberately NOT done
+inline here — the page works, and a blind find-and-replace across 1073 lines
+would be a good way to break it silently. --%>
 <div
   id="atlas"
-  class="pt-10 min-h-screen bg-slate-50 text-slate-900"
+  class="atlas"
 >
   <header
     class="border-b border-slate-200 bg-white px-4 py-3 sm:px-6"

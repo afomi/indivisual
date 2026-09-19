@@ -28,7 +28,7 @@ FROM ${BUILDER_IMAGE} AS builder
 
 # install build dependencies
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential git curl \
+  && apt-get install -y --no-install-recommends build-essential git curl nodejs npm \
   && rm -rf /var/lib/apt/lists/*
 
 # prepare build dir
@@ -69,6 +69,13 @@ COPY lib lib
 RUN mix compile
 
 COPY assets assets
+
+# /topo bundles three.js from assets/node_modules, so the npm deps must be
+# installed before esbuild runs. `npm ci` needs a lockfile; fall back to
+# `npm install` when one isn't committed yet.
+RUN cd assets \
+  && (npm ci --no-audit --no-fund || npm install --no-audit --no-fund) \
+  && test -d node_modules/three
 
 # compile assets
 RUN mix assets.deploy

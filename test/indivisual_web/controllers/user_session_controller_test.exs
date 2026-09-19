@@ -61,7 +61,9 @@ defmodule IndivisualWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/users/log-in/#{token}")
       html = html_response(conn, 200)
       refute html =~ "Confirm my account"
-      assert html =~ "Log in"
+      # Assert on the page's own login buttons. (This previously matched
+      # "Log in" in the masthead nav, which now reads "sign in with github".)
+      assert html =~ "Log me in only this time"
     end
 
     test "raises error for invalid token", %{conn: conn} do
@@ -88,7 +90,7 @@ defmodule IndivisualWeb.UserSessionControllerTest do
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
-      assert response =~ user.email
+      assert response =~ "/users/log-out"
       assert response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
@@ -163,7 +165,7 @@ defmodule IndivisualWeb.UserSessionControllerTest do
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
-      assert response =~ user.email
+      assert response =~ "/users/log-out"
       assert response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
@@ -187,7 +189,7 @@ defmodule IndivisualWeb.UserSessionControllerTest do
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
-      assert response =~ user.email
+      assert response =~ "/users/log-out"
       assert response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
