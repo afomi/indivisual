@@ -190,12 +190,21 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 /* Interior still uses Tailwind utilities inherited from adaptics; this
    neutralises the imported page chrome so it sits on our paper, not its own. */
 
+/* Atlas is a canvas, not prose. The reading measure (34rem) is right for a
+   column of text and wrong here: it capped the page below the 1024px `lg:`
+   breakpoint its three-column grid depends on, so the columns could never
+   separate and their contents overlapped at every viewport width. Full width,
+   and let the grid decide. */
 .atlas {
-  max-width: var(--measure);
-  padding: var(--baseline) var(--gutter) calc(var(--baseline) * 3);
+  max-width: none;
+  padding: 0;
   background: transparent;
   color: var(--ink);
 }
+
+/* Paragraphs inherit the reading measure globally; inside a data-dense layout
+   that leaves ragged half-width text in a column that is already narrow. */
+.atlas p { max-width: none; }
 
 .atlas .bg-white,
 .atlas .bg-slate-50 { background: transparent !important; }
