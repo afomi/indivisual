@@ -219,6 +219,50 @@ defmodule Indivisual.TimelogTest do
     end
   end
 
+  describe "capture/3 — the written line" do
+    test "a line becomes a structured entry", %{scope: scope} do
+      {:ok, entry} =
+        Timelog.capture(scope, "worked on trail easement 9-10:30", now: ~U[2026-09-19 14:00:00Z])
+
+      assert entry.kind == "work"
+      assert entry.title == "trail easement"
+      assert entry.valid_from == ~U[2026-09-19 09:00:00Z]
+      assert entry.valid_to == ~U[2026-09-19 10:30:00Z]
+      assert entry.user_id == scope.user.id
+    end
+
+    test "the exact text typed is kept, so parsing can never lose it", %{scope: scope} do
+      line = "worked on something odd 9-10:30"
+      {:ok, entry} = Timelog.capture(scope, line)
+
+      assert entry.payload["source_line"] == line
+    end
+
+    test "notes are stored as prose, unparsed", %{scope: scope} do
+      {:ok, entry} =
+        Timelog.capture(scope, "met with planning dept 2-3pm", notes: "trail easement, phase 2")
+
+      assert entry.payload["notes"] == "trail easement, phase 2"
+    end
+
+    test "a line with no time stays open", %{scope: scope} do
+      {:ok, entry} = Timelog.capture(scope, "reading Seeing Like a State")
+
+      assert entry.kind == "reading"
+      assert is_nil(entry.valid_to)
+    end
+
+    test "a blank line is refused", %{scope: scope} do
+      assert {:error, :blank} = Timelog.capture(scope, "   ")
+    end
+
+    test "captured entries are owned and isolated", %{scope: scope, other: other} do
+      {:ok, mine} = Timelog.capture(scope, "ran 5k")
+
+      refute mine.id in (other |> Timelog.list_entries() |> Enum.map(& &1.id))
+    end
+  end
+
   describe "pubsub" do
     test "broadcasts on the owner's own topic", %{scope: scope} do
       Timelog.subscribe(scope)

@@ -70,7 +70,8 @@ defmodule IndivisualWeb.AtlasLive do
      |> assign(:range_from, nil)
      |> assign(:range_to, nil)
      |> assign(:show_all, false)
-     |> assign(:all_events, [])}
+     |> assign(:all_events, [])
+     |> assign(:show_legend, false)}
   end
 
   @impl true
@@ -101,6 +102,12 @@ defmodule IndivisualWeb.AtlasLive do
   # --- events ---
 
   @impl true
+  # The radio group posts "projection"; `name="id"` would shadow the form
+  # element's own DOM id, which LiveView warns about.
+  def handle_event("select_projection", %{"projection" => id}, socket) do
+    {:noreply, patch(socket, projection: id)}
+  end
+
   def handle_event("select_projection", %{"id" => id}, socket) do
     {:noreply, patch(socket, projection: id)}
   end
@@ -139,6 +146,16 @@ defmodule IndivisualWeb.AtlasLive do
       end
 
     {:noreply, patch(socket, from: from, to: to, event: nil)}
+  end
+
+  def handle_event("show_legend", _params, socket) do
+    {:noreply, assign(socket, :show_legend, true)}
+  end
+
+  # Not URL state: a legend is reference material, not part of the view someone
+  # would share, so it stays out of the shareable path.
+  def handle_event("hide_legend", _params, socket) do
+    {:noreply, assign(socket, :show_legend, false)}
   end
 
   def handle_event("toggle_all", _params, socket) do
@@ -434,6 +451,26 @@ defmodule IndivisualWeb.AtlasLive do
   @doc "Date portion of a datetime, or `—`."
   def date(nil), do: "—"
   def date(%DateTime{} = dt), do: Calendar.strftime(dt, "%Y-%m-%d")
+
+  @truth_descriptions %{
+    "observed" => "present in a primary record or seen directly",
+    "reported" => "asserted by a source, not independently confirmed",
+    "proposed" => "suggested or applied for, not yet adopted",
+    "adopted" => "formally authorized",
+    "delivered" => "carried out in the world",
+    "superseded" => "replaced by a later record"
+  }
+
+  @doc "One-line meaning of a truth state, for the legend."
+  def truth_description(state), do: Map.get(@truth_descriptions, state, "")
+
+  @doc "Name of the active projection, for the always-visible menu summary."
+  def projection_name(projections, id) do
+    case Enum.find(projections, &(&1.id == id)) do
+      nil -> "—"
+      def -> def.name
+    end
+  end
 
   @doc "Date at one index of the timeline, for a range dial's accessible value."
   def index_label(events, index) do

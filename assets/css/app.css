@@ -206,6 +206,198 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    that leaves ragged half-width text in a column that is already narrow. */
 .atlas p { max-width: none; }
 
+/* ── atlas projection selector ─────────────────────────────────────────── */
+/* Four mutually exclusive projections as a radio row. The real inputs are
+   visually hidden but still focusable, so the label carries the appearance
+   while the browser keeps the keyboard behaviour and selection semantics. */
+
+.atlas-projnav {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.5rem var(--gutter) 0;
+}
+
+/* The radio row takes the space; the legend button stays its own width. */
+.atlas-projnav > .atlas-projnav__row { flex: 1; }
+
+.atlas-projnav__row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.atlas-projnav__option {
+  display: block;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  /* The active state adds a left rule; reserving it on every option stops the
+     text shifting sideways as the selection moves. */
+  border-left: 3px solid var(--rule);
+}
+
+.atlas-projnav__option:hover { border-color: var(--ink-soft); }
+
+.atlas-projnav__option.is-active {
+  border-color: var(--ink);
+  border-left-color: var(--link);
+}
+
+/* The input is hidden, so focus has to be drawn on the label around it. */
+.atlas-projnav__option:focus-within {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
+}
+
+.atlas-projnav__name {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.atlas-projnav__question {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+/* Two-up on a tablet, stacked on a phone: four columns of subtext turn to
+   slivers well before the viewport gets truly narrow. */
+@media (max-width: 64rem) {
+  .atlas-projnav__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 34rem) {
+  .atlas-projnav__row { grid-template-columns: 1fr; }
+  .atlas-projnav__question { display: none; }
+}
+
+/* ── atlas activity list ───────────────────────────────────────────────── */
+/* No card, no boxes. A list of events should read as a list; selection is a
+   left rule and weight rather than an outline, which keeps the scan down the
+   left edge unbroken. */
+
+.atlas-activity__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  padding: 0.25rem 0 0.25rem 0.5rem;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.atlas-activity__item:hover {
+  background: transparent;
+  color: inherit;
+  border-left-color: var(--rule);
+}
+
+.atlas-activity__item.is-selected {
+  border-left-color: var(--link);
+  font-weight: 700;
+}
+
+/* Events after the selected one: still listed, visibly not yet reached. */
+.atlas-activity__item.is-future { opacity: 0.55; }
+
+/* ── atlas legend modal ────────────────────────────────────────────────── */
+/* Truth states are reference: read once, then in the way. They live behind an
+   info button rather than holding a permanent column. */
+
+.atlas-legend-button {
+  font-size: 12px;
+  padding: 0.25rem 0.5rem;
+  white-space: nowrap;
+}
+
+.atlas-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+}
+
+.atlas-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.atlas-modal__panel {
+  position: relative;
+  max-width: 32rem;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: var(--baseline) var(--gutter);
+}
+
+.atlas-modal__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.atlas-modal__title { font-size: 15px; font-weight: 700; margin: 0; }
+
+.atlas-modal__close {
+  border: 0;
+  padding: 0 0.25rem;
+  font-size: 15px;
+  line-height: 1;
+  background: transparent;
+}
+
+.atlas-modal__close:hover { background: var(--ink); color: var(--paper); }
+
+.atlas-modal__lede {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0.5rem 0 var(--baseline);
+  max-width: none;
+}
+
+.atlas-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+
+.atlas-legend__item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 13px;
+}
+
+.atlas-legend__glyph {
+  flex: none;
+  width: 1.5rem;
+  text-align: center;
+  border: 1px solid var(--rule);
+  font-size: 12px;
+}
+
+.atlas-legend__desc { color: var(--ink-soft); }
+
+.atlas-modal__note {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin: var(--baseline) 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--rule);
+  max-width: none;
+}
+
 /* ── atlas timeline ────────────────────────────────────────────────────── */
 /* A horizontal band across the full width, above the columns — time is the
    one axis every projection shares, so it gets the whole span rather than a
@@ -300,3 +492,56 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 .atlas .bg-slate-50 { background: transparent !important; }
 
 .atlas .border-slate-200 { border-color: var(--rule) !important; }
+
+/* ── Source selector ────────────────────────────────────────────────────── */
+/* Reuses .atlas-projnav__option so sources and projections read as the same
+   kind of control. Sources are multi-select, so they are buttons with
+   aria-pressed, and the row wraps to as many as there are rather than
+   assuming four. */
+
+.atlas-sourcenav__row {
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+.atlas-sourcenav__option {
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 0;
+}
+
+.atlas-sourcenav__option:hover {
+  background: transparent;
+  color: var(--ink);
+}
+
+.atlas-sourcenav__meta {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.atlas-sourcenav__readout {
+  margin: 0.375rem 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.atlas-sourcenav__clear {
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.atlas-sourcenav__clear:hover {
+  background: none;
+  color: var(--link);
+}

@@ -16,9 +16,6 @@ would be a good way to break it silently. --%>
     <header class="border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
       <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
-            Indivisual Atlas
-          </p>
           <h1 class="text-xl font-semibold tracking-tight">
             A shared model of reality, read from an append-only event stream.
           </h1>
@@ -78,6 +75,105 @@ would be a good way to break it silently. --%>
         </dl>
       </div>
     </header>
+
+    <%!-- ============ Projection selector ============ --%>
+    <%!-- Four mutually exclusive options, so a radio group: the browser gives
+    arrow-key navigation and a single-selection contract for free, and all four
+    stay visible rather than hiding behind a menu. --%>
+    <nav
+      id="atlas-projection-nav"
+      class="atlas-projnav"
+      aria-label="Projection"
+    >
+      <form
+        id="atlas-projections"
+        phx-change="select_projection"
+        class="atlas-projnav__row"
+        role="radiogroup"
+        aria-label="Projection"
+      >
+        <%= for def <- @projections do %>
+          <label class={["atlas-projnav__option", def.id == @projection && "is-active"]}>
+            <input
+              type="radio"
+              name="projection"
+              value={def.id}
+              checked={def.id == @projection}
+              class="sr-only"
+            />
+            <span class="atlas-projnav__name">
+              {def.name}
+            </span>
+            <span class="atlas-projnav__question">
+              {def.question}
+            </span>
+          </label>
+        <% end %>
+      </form>
+
+      <%!-- Reference material, not a control: consulted once, then in the way. --%>
+      <button
+        type="button"
+        id="atlas-legend-open"
+        phx-click="show_legend"
+        class="atlas-legend-button"
+        aria-haspopup="dialog"
+      >
+        <span aria-hidden="true">ⓘ</span> Truth states
+      </button>
+    </nav>
+
+    <%!-- ============ Source selector ============ --%>
+    <%!-- Sources get the same treatment as projections: a full-width row of
+    options above the timeline, each naming what it is and who publishes it.
+    Unlike projections these are NOT mutually exclusive — any combination of
+    sources can be shown — so they are toggle buttons with aria-pressed rather
+    than a radio group. Same visual grammar, honest semantics. --%>
+    <nav
+      id="atlas-source-nav"
+      class="atlas-projnav"
+      aria-label="Sources"
+    >
+      <div class="atlas-projnav__row atlas-sourcenav__row">
+        <%= for {id, source} <- Enum.sort_by(@sources, fn {_, s} -> s.title end) do %>
+          <button
+            type="button"
+            phx-click="toggle_source"
+            phx-value-id={id}
+            aria-pressed={to_string(id in @source_filter)}
+            class={[
+              "atlas-projnav__option atlas-sourcenav__option",
+              id in @source_filter && "is-active"
+            ]}
+          >
+            <span class="atlas-projnav__name">
+              {source.title}
+            </span>
+            <span class="atlas-projnav__question">
+              {source[:publisher] || "—"}
+            </span>
+            <span class="atlas-sourcenav__meta">
+              {source.status} · adapter: {source.adapter.status}
+            </span>
+          </button>
+        <% end %>
+      </div>
+
+      <p class="atlas-sourcenav__readout">
+        <%= if @source_filter == [] do %>
+          All sources shown.
+        <% else %>
+          Filtering to {length(@source_filter)} of {map_size(@sources)} sources.
+          <button
+            type="button"
+            phx-click="clear_sources"
+            class="atlas-sourcenav__clear"
+          >
+            Show all
+          </button>
+        <% end %>
+      </p>
+    </nav>
 
     <%!-- ============ Timeline: full-width, above the columns ============ --%>
     <%!-- Its own element at 100% width, holding exactly two controls: an "all
@@ -230,393 +326,80 @@ would be a good way to break it silently. --%>
       </form>
     </section>
 
-    <div class="grid gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[17rem_minmax(0,1fr)_25rem]">
-      <%!-- ============ Region 1: projection rail ============ --%>
-      <aside
-        id="atlas-rail"
-        class="space-y-6"
-        aria-label="Projections, sources, and legend"
-      >
-        <section>
-          <h2 class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Projection
-          </h2>
-          <ul
-            id="atlas-projections"
-            class="space-y-1"
-            role="list"
-          >
-            <%= for def <- @projections do %>
-              <li>
-                <button
-                  type="button"
-                  phx-click="select_projection"
-                  phx-value-id={def.id}
-                  aria-pressed={to_string(def.id == @projection)}
-                  class={[
-                    "w-full rounded-md border px-3 py-2 text-left motion-safe:transition-colors",
-                    def.id == @projection && "border-blue-600 bg-blue-50",
-                    def.id != @projection && "border-slate-200 bg-white hover:border-slate-400"
-                  ]}
-                >
-                  <span class="block text-sm font-medium">
-                    {def.name}
-                  </span>
-                  <span class="block text-xs text-slate-600">
-                    {def.question}
-                  </span>
-                </button>
-              </li>
-            <% end %>
-          </ul>
-          <p class="mt-2 text-xs text-slate-500">
-            A projection changes the read model, not the source events.
-          </p>
-        </section>
-
-        <section>
-          <div class="mb-2 flex items-baseline justify-between">
-            <h2 class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Sources
-            </h2>
-            <%= if @source_filter != [] do %>
-              <button
-                type="button"
-                phx-click="clear_sources"
-                class="text-xs text-blue-700 underline underline-offset-2"
-              >
-                Show all
-              </button>
-            <% end %>
-          </div>
-          <ul
-            id="atlas-sources"
-            class="space-y-1"
-            role="list"
-          >
-            <%= for {id, source} <- Enum.sort_by(@sources, fn {_, s} -> s.title end) do %>
-              <li>
-                <button
-                  type="button"
-                  phx-click="toggle_source"
-                  phx-value-id={id}
-                  aria-pressed={to_string(id in @source_filter)}
-                  class={[
-                    "w-full rounded-md border px-3 py-2 text-left text-xs motion-safe:transition-colors",
-                    id in @source_filter && "border-blue-600 bg-blue-50",
-                    id not in @source_filter && "border-slate-200 bg-white hover:border-slate-400"
-                  ]}
-                >
-                  <span class="block font-medium text-slate-900">
-                    {source.title}
-                  </span>
-                  <span class="block text-slate-600">
-                    {source[:publisher] || "—"}
-                  </span>
-                  <span class="mt-1 inline-flex items-center gap-1 text-[11px] text-slate-500">
-                    <span class="rounded border border-slate-300 px-1">
-                      {source.status}
-                    </span>
-                    <span class="rounded border border-slate-300 px-1">
-                      adapter: {source.adapter.status}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            <% end %>
-          </ul>
-          <p class="mt-2 text-xs text-slate-500">
-            <%= if @source_filter == [] do %>
-              All sources shown.
-            <% else %>
-              Filtering to {length(@source_filter)} source(s).
-            <% end %>
-          </p>
-        </section>
-
-        <section>
-          <h2 class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Truth states
-          </h2>
-          <ul
-            id="atlas-legend"
-            class="space-y-1 text-xs"
-            role="list"
-          >
-            <li class="flex items-center gap-2">
-              <span
-                class={["w-5 rounded border text-center", truth_classes("observed")]}
-                aria-hidden="true"
-              >
-                {truth_glyph("observed")}
-              </span>
-              <span>
-                <strong>observed</strong> — present in a primary record or seen directly
-              </span>
-            </li>
-            <li class="flex items-center gap-2">
-              <span
-                class={["w-5 rounded border text-center", truth_classes("reported")]}
-                aria-hidden="true"
-              >
-                {truth_glyph("reported")}
-              </span>
-              <span>
-                <strong>reported</strong> — asserted by a source, not independently confirmed
-              </span>
-            </li>
-            <li class="flex items-center gap-2">
-              <span
-                class={["w-5 rounded border text-center", truth_classes("proposed")]}
-                aria-hidden="true"
-              >
-                {truth_glyph("proposed")}
-              </span>
-              <span>
-                <strong>proposed</strong> — suggested or applied for, not yet adopted
-              </span>
-            </li>
-            <li class="flex items-center gap-2">
-              <span
-                class={["w-5 rounded border text-center", truth_classes("adopted")]}
-                aria-hidden="true"
-              >
-                {truth_glyph("adopted")}
-              </span>
-              <span>
-                <strong>adopted</strong> — formally authorized
-              </span>
-            </li>
-            <li class="flex items-center gap-2">
-              <span
-                class={["w-5 rounded border text-center", truth_classes("delivered")]}
-                aria-hidden="true"
-              >
-                {truth_glyph("delivered")}
-              </span>
-              <span>
-                <strong>delivered</strong> — built, operational, or completed
-              </span>
-            </li>
-            <li class="flex items-center gap-2">
-              <span
-                class={["w-5 rounded border text-center", truth_classes("superseded")]}
-                aria-hidden="true"
-              >
-                {truth_glyph("superseded")}
-              </span>
-              <span>
-                <strong>superseded</strong> — replaced by a later record
-              </span>
-            </li>
-          </ul>
-          <p class="mt-2 text-xs text-slate-500">
-            Annotations are their own events with their own author.
-            They never overwrite a source event.
-          </p>
-        </section>
-      </aside>
-
-      <%!-- ============ Region 2: Atlas canvas ============ --%>
-      <section
-        id="atlas-canvas"
-        class="rounded-lg border border-slate-200 bg-white p-3"
-        aria-labelledby="atlas-canvas-title"
-      >
-        <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2
-            id="atlas-canvas-title"
-            class="text-sm font-semibold"
-          >
-            {Projections.get(@projection).name}
-            <span class="font-normal text-slate-500">
-              · {map_size(@read_model.entities)} entities · {length(@read_model.relationships)} relationships
-            </span>
-          </h2>
-          <%= if @entity do %>
-            <p class="text-xs text-slate-600">
-              Focused on <strong>{entity_label(@read_model, @entity)}</strong>
-              <button
-                type="button"
-                phx-click="clear_entity"
-                class="ml-1 text-blue-700 underline underline-offset-2"
-              >
-                clear
-              </button>
-            </p>
-          <% end %>
-        </div>
-
-        <%= if @projection == "entity" and is_nil(@read_model[:entity]) do %>
-          <p
-            id="atlas-canvas-empty"
-            class="rounded border border-dashed border-slate-300 p-4 text-sm text-slate-600"
-          >
-            Pick an entity from the reader (or the list below) to see the events, relationships, and sources around it.
-          </p>
-        <% end %>
-
-        <%= if @projection == "provenance" do %>
-          <ul
-            id="atlas-provenance-counts"
-            class="mb-2 flex flex-wrap gap-2 text-xs"
-            role="list"
-          >
-            <%= for %{truth_state: state, events: es} <- @read_model.groups do %>
-              <li class={["rounded border px-2 py-0.5", truth_classes(state)]}>
-                <span aria-hidden="true">
-                  {truth_glyph(state)}
-                </span>
-                {state}: {length(es)}
-              </li>
-            <% end %>
-          </ul>
-        <% end %>
-
-        <p class="sr-only">
-          The canvas draws {map_size(@read_model.entities)} entities on a ring and {length(
-            @read_model.relationships
-          )} relationships between them.
-          The same information is available as lists in the reader.
-        </p>
-
-        <svg
-          id="atlas-svg"
-          viewBox="0 0 800 600"
-          class="h-auto w-full max-w-full"
-          role="img"
-          aria-label={"Topology of #{map_size(@read_model.entities)} entities and #{length(@read_model.relationships)} relationships"}
-          data-projection={@projection}
-          data-selected={@selected && @selected.event_id}
+    <div class="grid gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[15rem_22rem_minmax(0,1fr)] lg:items-start">
+      <%!-- ============ Column 1: sources, legend, and the event log ============ --%>
+      <div class="space-y-6">
+        <%!-- The legend that lived here now opens from the nav's info button;
+        this keeps the column's landmark so ordering stays stable. --%>
+        <aside
+          id="atlas-rail"
+          class="sr-only"
+          aria-label="Legend"
         >
-          <g id="atlas-svg-relationships">
-            <%= for rel <- @read_model.relationships do %>
-              <% from = Map.get(@read_model.positions, rel.from) %>
-              <% to = Map.get(@read_model.positions, rel.to) %>
-              <%= if from && to do %>
-                <line
-                  x1={from.x}
-                  y1={from.y}
-                  x2={to.x}
-                  y2={to.y}
-                  stroke={truth_stroke(rel.truth_state)}
-                  stroke-width={
-                    if @selected && rel.event_id == @selected.event_id, do: "4", else: "1.5"
-                  }
-                  stroke-dasharray={
-                    if rel.truth_state in ["proposed", "reported"], do: "6 4", else: nil
-                  }
-                  opacity={
-                    if @selected && rel.event_id == @selected.event_id, do: "1", else: "0.55"
-                  }
-                  data-event={rel.event_id}
-                  data-truth={rel.truth_state}
-                  class="motion-safe:transition-all"
-                >
-                  <title>
-                    {entity_label(@read_model, rel.from)} {rel.verb} {entity_label(
-                      @read_model,
-                      rel.to
-                    )} ({rel.truth_state})
-                  </title>
-                </line>
-              <% end %>
-            <% end %>
-          </g>
-          <g id="atlas-svg-entities">
-            <%= for {ref, entity} <- Enum.sort_by(@read_model.entities, fn {ref, _} -> ref end) do %>
-              <% pos = Map.fetch!(@read_model.positions, ref) %>
-              <% affected? = ref in @affected %>
-              <% focused? = ref == @entity %>
-              <g
-                phx-click="focus_entity"
-                phx-value-ref={ref}
-                class="cursor-pointer"
-                data-ref={ref}
-                data-affected={to_string(affected?)}
-                role="button"
-                tabindex="-1"
-              >
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={if affected? or focused?, do: 16, else: 10}
-                  fill={if affected?, do: "#1d4ed8", else: "#ffffff"}
-                  stroke={if focused?, do: "#b45309", else: "#1e293b"}
-                  stroke-width={if affected? or focused?, do: "3", else: "1.5"}
-                  class="motion-safe:transition-all"
-                >
-                  <title>
-                    {entity.label} ({entity.kind}) — {length(entity.event_ids)} event(s)
-                  </title>
-                </circle>
-                <text
-                  x={pos.x}
-                  y={pos.y + if pos.y > 300, do: 30, else: -22}
-                  text-anchor="middle"
-                  font-size="12"
-                  fill="#0f172a"
-                  font-weight={if affected?, do: "600", else: "400"}
-                >
-                  {entity.label}
-                </text>
-                <%= if affected? do %>
-                  <text
-                    x={pos.x}
-                    y={pos.y + 4}
-                    text-anchor="middle"
-                    font-size="10"
-                    fill="#ffffff"
-                    aria-hidden="true"
-                  >
-                    ●
-                  </text>
-                <% end %>
-              </g>
-            <% end %>
-          </g>
-        </svg>
-
-        <details class="mt-2 text-xs">
-          <summary class="cursor-pointer text-slate-600">
-            Entities in this projection ({map_size(@read_model.entities)})
-          </summary>
-          <ul
-            id="atlas-entity-list"
-            class="mt-1 grid gap-1 sm:grid-cols-2"
-            role="list"
+          Truth states are documented in the legend dialog.
+        </aside>
+        <div>
+          <h2 class="mb-2 text-sm font-semibold">
+            Activity
+          </h2>
+          <ol
+            id="atlas-activity"
+            class="space-y-1"
+            aria-label="Activity, in source order"
           >
-            <%= for {ref, entity} <- Enum.sort_by(@read_model.entities, fn {ref, _} -> ref end) do %>
-              <li>
+            <%= for {event, i} <- Enum.with_index(@events) do %>
+              <li id={"atlas-activity-#{i}"}>
                 <button
                   type="button"
-                  phx-click="focus_entity"
-                  phx-value-ref={ref}
+                  phx-click="select_event"
+                  phx-value-id={event.event_id}
+                  aria-current={
+                    if @selected && event.event_id == @selected.event_id, do: "true", else: nil
+                  }
                   class={[
-                    "w-full rounded border px-2 py-1 text-left",
-                    ref in @affected && "border-blue-600 bg-blue-50",
-                    ref not in @affected && "border-slate-200"
+                    "atlas-activity__item",
+                    @selected && event.event_id == @selected.event_id && "is-selected",
+                    @selected_index && i > @selected_index && "is-future"
                   ]}
                 >
-                  <span class="font-medium">
-                    {entity.label}
-                  </span>
-                  <span class="text-slate-500">
-                    · {entity.kind} · {length(entity.event_ids)} event(s)
-                  </span>
-                  <%= if ref in @affected do %>
-                    <span class="ml-1 rounded bg-blue-700 px-1 text-[10px] uppercase text-white">
-                      affected
+                  <span class="flex items-center justify-between gap-2">
+                    <time
+                      datetime={stamp(Event.effective_time(event))}
+                      class="font-mono text-[11px] text-slate-500"
+                    >
+                      {date(Event.effective_time(event))}
+                    </time>
+                    <span class={[
+                      "inline-flex items-center gap-1 rounded border px-1 text-[10px]",
+                      truth_classes(event.truth_state)
+                    ]}>
+                      <span aria-hidden="true">
+                        {truth_glyph(event.truth_state)}
+                      </span>
+                      {event.truth_state}
                     </span>
-                  <% end %>
+                  </span>
+                  <span class="mt-0.5 block font-medium text-slate-900">
+                    <%= if Event.annotation?(event) do %>
+                      <span class="rounded border border-slate-300 px-1 text-[10px] uppercase">
+                        annotation
+                      </span>
+                    <% end %>
+                    {Event.title(event)}
+                  </span>
+                  <span class="block text-slate-500">
+                    {source_title(@sources, event.source_id)} · affects {length(
+                      Event.affected_refs(event)
+                    )}
+                  </span>
                 </button>
               </li>
             <% end %>
-          </ul>
-        </details>
-      </section>
+          </ol>
+        </div>
+      </div>
 
-      <%!-- ============ Region 3: context reader ============ --%>
+      <%!-- ============ Column 2: entity / selected-event detail ============ --%>
       <section
         id="atlas-reader"
         class="space-y-4"
@@ -927,70 +710,280 @@ would be a good way to break it silently. --%>
             </p>
           </article>
         <% end %>
+      </section>
 
-        <div class="rounded-lg border border-slate-200 bg-white p-3">
-          <h2 class="mb-2 text-sm font-semibold">
-            Activity
-          </h2>
-          <ol
-            id="atlas-activity"
-            class="space-y-1"
-            aria-label="Activity, in source order"
+      <%!-- ============ Column 3: the canvas, filling remaining width ============ --%>
+      <section
+        id="atlas-canvas"
+        class="rounded-lg border border-slate-200 bg-white p-3 lg:sticky lg:top-4"
+        aria-labelledby="atlas-canvas-title"
+      >
+        <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2
+            id="atlas-canvas-title"
+            class="text-sm font-semibold"
           >
-            <%= for {event, i} <- Enum.with_index(@events) do %>
-              <li id={"atlas-activity-#{i}"}>
+            {Projections.get(@projection).name}
+            <span class="font-normal text-slate-500">
+              · {map_size(@read_model.entities)} entities · {length(@read_model.relationships)} relationships
+            </span>
+          </h2>
+          <%= if @entity do %>
+            <p class="text-xs text-slate-600">
+              Focused on <strong>{entity_label(@read_model, @entity)}</strong>
+              <button
+                type="button"
+                phx-click="clear_entity"
+                class="ml-1 text-blue-700 underline underline-offset-2"
+              >
+                clear
+              </button>
+            </p>
+          <% end %>
+        </div>
+
+        <%= if @projection == "entity" and is_nil(@read_model[:entity]) do %>
+          <p
+            id="atlas-canvas-empty"
+            class="rounded border border-dashed border-slate-300 p-4 text-sm text-slate-600"
+          >
+            Pick an entity from the reader (or the list below) to see the events, relationships, and sources around it.
+          </p>
+        <% end %>
+
+        <%= if @projection == "provenance" do %>
+          <ul
+            id="atlas-provenance-counts"
+            class="mb-2 flex flex-wrap gap-2 text-xs"
+            role="list"
+          >
+            <%= for %{truth_state: state, events: es} <- @read_model.groups do %>
+              <li class={["rounded border px-2 py-0.5", truth_classes(state)]}>
+                <span aria-hidden="true">
+                  {truth_glyph(state)}
+                </span>
+                {state}: {length(es)}
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+
+        <p class="sr-only">
+          The canvas draws {map_size(@read_model.entities)} entities on a ring and {length(
+            @read_model.relationships
+          )} relationships between them.
+          The same information is available as lists in the reader.
+        </p>
+
+        <svg
+          id="atlas-svg"
+          viewBox="0 0 800 600"
+          class="h-auto w-full max-w-full"
+          role="img"
+          aria-label={"Topology of #{map_size(@read_model.entities)} entities and #{length(@read_model.relationships)} relationships"}
+          data-projection={@projection}
+          data-selected={@selected && @selected.event_id}
+        >
+          <g id="atlas-svg-relationships">
+            <%= for rel <- @read_model.relationships do %>
+              <% from = Map.get(@read_model.positions, rel.from) %>
+              <% to = Map.get(@read_model.positions, rel.to) %>
+              <%= if from && to do %>
+                <line
+                  x1={from.x}
+                  y1={from.y}
+                  x2={to.x}
+                  y2={to.y}
+                  stroke={truth_stroke(rel.truth_state)}
+                  stroke-width={
+                    if @selected && rel.event_id == @selected.event_id, do: "4", else: "1.5"
+                  }
+                  stroke-dasharray={
+                    if rel.truth_state in ["proposed", "reported"], do: "6 4", else: nil
+                  }
+                  opacity={
+                    if @selected && rel.event_id == @selected.event_id, do: "1", else: "0.55"
+                  }
+                  data-event={rel.event_id}
+                  data-truth={rel.truth_state}
+                  class="motion-safe:transition-all"
+                >
+                  <title>
+                    {entity_label(@read_model, rel.from)} {rel.verb} {entity_label(
+                      @read_model,
+                      rel.to
+                    )} ({rel.truth_state})
+                  </title>
+                </line>
+              <% end %>
+            <% end %>
+          </g>
+          <g id="atlas-svg-entities">
+            <%= for {ref, entity} <- Enum.sort_by(@read_model.entities, fn {ref, _} -> ref end) do %>
+              <% pos = Map.fetch!(@read_model.positions, ref) %>
+              <% affected? = ref in @affected %>
+              <% focused? = ref == @entity %>
+              <g
+                phx-click="focus_entity"
+                phx-value-ref={ref}
+                class="cursor-pointer"
+                data-ref={ref}
+                data-affected={to_string(affected?)}
+                role="button"
+                tabindex="-1"
+              >
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={if affected? or focused?, do: 16, else: 10}
+                  fill={if affected?, do: "#1d4ed8", else: "#ffffff"}
+                  stroke={if focused?, do: "#b45309", else: "#1e293b"}
+                  stroke-width={if affected? or focused?, do: "3", else: "1.5"}
+                  class="motion-safe:transition-all"
+                >
+                  <title>
+                    {entity.label} ({entity.kind}) — {length(entity.event_ids)} event(s)
+                  </title>
+                </circle>
+                <text
+                  x={pos.x}
+                  y={pos.y + if pos.y > 300, do: 30, else: -22}
+                  text-anchor="middle"
+                  font-size="12"
+                  fill="#0f172a"
+                  font-weight={if affected?, do: "600", else: "400"}
+                >
+                  {entity.label}
+                </text>
+                <%= if affected? do %>
+                  <text
+                    x={pos.x}
+                    y={pos.y + 4}
+                    text-anchor="middle"
+                    font-size="10"
+                    fill="#ffffff"
+                    aria-hidden="true"
+                  >
+                    ●
+                  </text>
+                <% end %>
+              </g>
+            <% end %>
+          </g>
+        </svg>
+
+        <details class="mt-2 text-xs">
+          <summary class="cursor-pointer text-slate-600">
+            Entities in this projection ({map_size(@read_model.entities)})
+          </summary>
+          <ul
+            id="atlas-entity-list"
+            class="mt-1 grid gap-1 sm:grid-cols-2"
+            role="list"
+          >
+            <%= for {ref, entity} <- Enum.sort_by(@read_model.entities, fn {ref, _} -> ref end) do %>
+              <li>
                 <button
                   type="button"
-                  phx-click="select_event"
-                  phx-value-id={event.event_id}
-                  aria-current={
-                    if @selected && event.event_id == @selected.event_id, do: "true", else: nil
-                  }
+                  phx-click="focus_entity"
+                  phx-value-ref={ref}
                   class={[
-                    "w-full rounded-md border px-2 py-1.5 text-left text-xs motion-safe:transition-colors",
-                    @selected && event.event_id == @selected.event_id &&
-                      "border-blue-600 bg-blue-50",
-                    !(@selected && event.event_id == @selected.event_id) &&
-                      "border-slate-200 bg-white hover:border-slate-400",
-                    @selected_index && i > @selected_index && "opacity-60"
+                    "w-full rounded border px-2 py-1 text-left",
+                    ref in @affected && "border-blue-600 bg-blue-50",
+                    ref not in @affected && "border-slate-200"
                   ]}
                 >
-                  <span class="flex items-center justify-between gap-2">
-                    <time
-                      datetime={stamp(Event.effective_time(event))}
-                      class="font-mono text-[11px] text-slate-500"
-                    >
-                      {date(Event.effective_time(event))}
-                    </time>
-                    <span class={[
-                      "inline-flex items-center gap-1 rounded border px-1 text-[10px]",
-                      truth_classes(event.truth_state)
-                    ]}>
-                      <span aria-hidden="true">
-                        {truth_glyph(event.truth_state)}
-                      </span>
-                      {event.truth_state}
+                  <span class="font-medium">
+                    {entity.label}
+                  </span>
+                  <span class="text-slate-500">
+                    · {entity.kind} · {length(entity.event_ids)} event(s)
+                  </span>
+                  <%= if ref in @affected do %>
+                    <span class="ml-1 rounded bg-blue-700 px-1 text-[10px] uppercase text-white">
+                      affected
                     </span>
-                  </span>
-                  <span class="mt-0.5 block font-medium text-slate-900">
-                    <%= if Event.annotation?(event) do %>
-                      <span class="rounded border border-slate-300 px-1 text-[10px] uppercase">
-                        annotation
-                      </span>
-                    <% end %>
-                    {Event.title(event)}
-                  </span>
-                  <span class="block text-slate-500">
-                    {source_title(@sources, event.source_id)} · affects {length(
-                      Event.affected_refs(event)
-                    )}
-                  </span>
+                  <% end %>
                 </button>
               </li>
             <% end %>
-          </ol>
-        </div>
+          </ul>
+        </details>
       </section>
     </div>
+
+    <%= if @show_legend do %>
+      <%!-- phx-window-keydown gives Escape without a hook; the backdrop closes
+      on click, and focus starts on the close button so keyboard users are not
+      stranded behind the dialog. --%>
+      <div
+        id="atlas-legend-modal"
+        class="atlas-modal"
+        phx-window-keydown="hide_legend"
+        phx-key="Escape"
+      >
+        <div
+          class="atlas-modal__backdrop"
+          phx-click="hide_legend"
+          aria-hidden="true"
+        >
+        </div>
+        <div
+          class="atlas-modal__panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="atlas-legend-title"
+        >
+          <div class="atlas-modal__head">
+            <h2
+              id="atlas-legend-title"
+              class="atlas-modal__title"
+            >
+              Truth states
+            </h2>
+            <button
+              type="button"
+              id="atlas-legend-close"
+              phx-click="hide_legend"
+              class="atlas-modal__close"
+              aria-label="Close"
+              phx-mounted={JS.focus()}
+            >
+              ✕
+            </button>
+          </div>
+
+          <p class="atlas-modal__lede">
+            How settled a claim is, least to most. Every event carries one.
+          </p>
+
+          <ul
+            id="atlas-legend"
+            class="atlas-legend"
+            role="list"
+          >
+            <%= for state <- Atlas.truth_states() do %>
+              <li class="atlas-legend__item">
+                <span
+                  class={["atlas-legend__glyph", truth_classes(state)]}
+                  aria-hidden="true"
+                >
+                  {truth_glyph(state)}
+                </span>
+                <span>
+                  <strong>{state}</strong>
+                  <span class="atlas-legend__desc">— {truth_description(state)}</span>
+                </span>
+              </li>
+            <% end %>
+          </ul>
+
+          <p class="atlas-modal__note">
+            Annotations are their own events with their own author.
+            They never overwrite a source event.
+          </p>
+        </div>
+      </div>
+    <% end %>
   </div>
 </Layouts.app>

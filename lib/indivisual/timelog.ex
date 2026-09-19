@@ -25,6 +25,7 @@ defmodule Indivisual.Timelog do
   alias Indivisual.Accounts.User
   alias Indivisual.Repo
   alias Indivisual.Timelog.Entry
+  alias Indivisual.Timelog.Line
 
   @doc "PubSub topic carrying one person's timelog changes."
   def topic(%Scope{user: %User{id: uid}}), do: "timelog:#{uid}"
@@ -112,6 +113,39 @@ defmodule Indivisual.Timelog do
     |> Repo.insert()
     |> broadcast(scope, :created)
   end
+
+  @doc """
+  Creates an entry from a written line, the way it would be typed in a notes
+  file: `worked on trail easement 9-10:30`.
+
+  `notes` is stored as prose. It is not parsed here — capture should never wait
+  on understanding — and a later job can structure it without blocking a write.
+  """
+  def capture(%Scope{} = scope, line, opts \\ []) do
+    now = Keyword.get(opts, :now, now())
+    notes = Keyword.get(opts, :notes)
+
+    case Line.parse(line, now, notes) do
+      {:error, :blank} ->
+        {:error, :blank}
+
+      {:ok, parsed} ->
+        payload =
+          %{"source_line" => String.trim(line)}
+          |> maybe_put_note(parsed.notes)
+
+        create_entry(scope, %{
+          "kind" => parsed.kind,
+          "title" => parsed.title,
+          "valid_from" => parsed.valid_from,
+          "valid_to" => parsed.valid_to,
+          "payload" => payload
+        })
+    end
+  end
+
+  defp maybe_put_note(payload, nil), do: payload
+  defp maybe_put_note(payload, notes), do: Map.put(payload, "notes", notes)
 
   @doc "Starts an open-ended entry: begins now, no end until closed."
   def start_entry(%Scope{} = scope, kind, title, attrs \\ %{}) do
