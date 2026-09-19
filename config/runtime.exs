@@ -113,6 +113,38 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  # ── Outbound mail ──
+  # Without this, prod inherits Swoosh.Adapters.Local from config/config.exs,
+  # which silently swallows every email into an in-memory mailbox nobody reads
+  # AND makes the login page advertise the dev mailbox to real users.
+  # SES is the intended adapter; MAIL_ADAPTER=local is the escape hatch.
+  case System.get_env("MAIL_ADAPTER", "ses") do
+    "ses" ->
+      config :indivisual, Indivisual.Mailer,
+        adapter: Swoosh.Adapters.AmazonSES,
+        region:
+          System.get_env("AWS_SES_REGION") || System.get_env("AWS_REGION") ||
+            raise("environment variable AWS_SES_REGION (or AWS_REGION) is missing"),
+        access_key:
+          System.get_env("AWS_ACCESS_KEY_ID") ||
+            raise("environment variable AWS_ACCESS_KEY_ID is missing"),
+        secret:
+          System.get_env("AWS_SECRET_ACCESS_KEY") ||
+            raise("environment variable AWS_SECRET_ACCESS_KEY is missing")
+
+      # Hackney, not Finch: hackney is already a direct dep and needs no
+      # supervision child, whereas Swoosh.ApiClient.Finch would require a
+      # named Finch pool in the supervision tree that this app does not start.
+      config :swoosh, :api_client, Swoosh.ApiClient.Hackney
+
+    "local" ->
+      # Opt-in only, e.g. a staging box where mail should go nowhere.
+      config :indivisual, Indivisual.Mailer, adapter: Swoosh.Adapters.Local
+
+    other ->
+      raise "unknown MAIL_ADAPTER #{inspect(other)}; expected \"ses\" or \"local\""
+  end
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key

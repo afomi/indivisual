@@ -25,6 +25,8 @@ config :indivisual,
   generators: [timestamp_type: :utc_datetime]
 
 # Swoosh mailer — used by phx.gen.auth for confirmation / reset emails.
+# Dev/test default only. Prod OVERRIDES this in config/runtime.exs and raises
+# if SES is unconfigured; leaving prod on Local silently drops every email.
 config :indivisual, Indivisual.Mailer, adapter: Swoosh.Adapters.Local
 
 # Never log these, from any source (params, changesets in error reports).
@@ -39,7 +41,7 @@ config :phoenix, :filter_parameters, [
   "code"
 ]
 
-# Disable Swoosh's API client by default; prod re-enables it for SES.
+# Disable Swoosh's API client by default; runtime.exs enables hackney for SES.
 config :swoosh, :api_client, false
 
 # GitHub OAuth. Scopes: `read:user`/`user:email` identify the user; `repo` is
