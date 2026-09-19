@@ -32,6 +32,7 @@ defmodule Indivisual.Spaces do
       nil ->
         {:ok, space} = create_space(%{name: "Default", slug: "default"})
         space
+
       space ->
         space
     end

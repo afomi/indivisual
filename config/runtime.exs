@@ -118,19 +118,29 @@ if config_env() == :prod do
   # which silently swallows every email into an in-memory mailbox nobody reads
   # AND makes the login page advertise the dev mailbox to real users.
   # SES is the intended adapter; MAIL_ADAPTER=local is the escape hatch.
+  # NOTE: no raise/1 in here. runtime.exs is evaluated on EVERY boot of the
+  # release — including `bin/migrate`, which only runs Ecto and exits. A raise
+  # here takes DOWN MIGRATIONS over a mail misconfiguration, which is what
+  # broke the 2026-09-18 deploy. Mail problems should cost mail, not deploys.
   case System.get_env("MAIL_ADAPTER", "ses") do
     "ses" ->
+      # ExAwsAmazonSES (not AmazonSES) so credentials come from the EC2
+      # INSTANCE PROFILE rather than a static key pair: the app module already
+      # grants ses:SendEmail to the instance role, scoped to *@<domain>.
+      # AmazonSES has required_config [:region, :access_key, :secret] and would
+      # force us to store and rotate keys. This matches jurisdictional/ogenda.
+      #
+      # Region: indivisual.app's SES identity lives in us-east-1 (verified —
+      # apps/indivisual/main.tf sets no region override, so module.ses
+      # inherited the us-east-1 provider). Other apps in the fleet use
+      # us-west-1; do not copy that default here.
+      aws_region = System.get_env("AWS_SES_REGION") || System.get_env("AWS_REGION") || "us-east-1"
+
+      config :ex_aws, region: aws_region
+
       config :indivisual, Indivisual.Mailer,
-        adapter: Swoosh.Adapters.AmazonSES,
-        region:
-          System.get_env("AWS_SES_REGION") || System.get_env("AWS_REGION") ||
-            raise("environment variable AWS_SES_REGION (or AWS_REGION) is missing"),
-        access_key:
-          System.get_env("AWS_ACCESS_KEY_ID") ||
-            raise("environment variable AWS_ACCESS_KEY_ID is missing"),
-        secret:
-          System.get_env("AWS_SECRET_ACCESS_KEY") ||
-            raise("environment variable AWS_SECRET_ACCESS_KEY is missing")
+        adapter: Swoosh.Adapters.ExAwsAmazonSES,
+        region: aws_region
 
       # Hackney, not Finch: hackney is already a direct dep and needs no
       # supervision child, whereas Swoosh.ApiClient.Finch would require a
@@ -213,6 +223,7 @@ if config_env() == :prod do
 
   config :indivisual, Indivisual.Vault,
     ciphers: [
-      default: {Cloak.Ciphers.AES.GCM, tag: "AES256", key: Base.decode64!(vault_key), iv_length: 12}
+      default:
+        {Cloak.Ciphers.AES.GCM, tag: "AES256", key: Base.decode64!(vault_key), iv_length: 12}
     ]
 end

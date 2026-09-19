@@ -90,8 +90,13 @@ defmodule Indivisual.Projections.Axis do
     end
   end
 
-  def normalize(%{"kind" => kind}), do: {:error, "unknown layout kind #{inspect(kind)} — expected one of #{Enum.join(@kinds, ", ")}"}
-  def normalize(_), do: {:error, "layout must be a map with a \"kind\" key (or empty for freeform)"}
+  def normalize(%{"kind" => kind}),
+    do:
+      {:error,
+       "unknown layout kind #{inspect(kind)} — expected one of #{Enum.join(@kinds, ", ")}"}
+
+  def normalize(_),
+    do: {:error, "layout must be a map with a \"kind\" key (or empty for freeform)"}
 
   defp valid_position?({_id, [x, y]}) when is_number(x) and is_number(y), do: true
   defp valid_position?(_), do: false
@@ -121,10 +126,14 @@ defmodule Indivisual.Projections.Axis do
     end
   end
 
-  defp normalize_axis(_), do: {:error, "axes layout requires x_axis and y_axis maps with a \"property\""}
+  defp normalize_axis(_),
+    do: {:error, "axes layout requires x_axis and y_axis maps with a \"property\""}
 
-  defp normalize_semantic_axis(%{"axis_id" => id}) when is_integer(id), do: {:ok, %{"axis_id" => id}}
-  defp normalize_semantic_axis(_), do: {:error, "semantic layout requires x_axis and y_axis maps with an integer \"axis_id\""}
+  defp normalize_semantic_axis(%{"axis_id" => id}) when is_integer(id),
+    do: {:ok, %{"axis_id" => id}}
+
+  defp normalize_semantic_axis(_),
+    do: {:error, "semantic layout requires x_axis and y_axis maps with an integer \"axis_id\""}
 
   defp valid_property?("metadata." <> key), do: key != ""
   defp valid_property?(property), do: Map.has_key?(@node_properties, property)
@@ -177,7 +186,9 @@ defmodule Indivisual.Projections.Axis do
 
     values =
       nodes
-      |> Enum.map(fn node -> {Integer.to_string(node.id), coerce(extract(node, property), scale)} end)
+      |> Enum.map(fn node ->
+        {Integer.to_string(node.id), coerce(extract(node, property), scale)}
+      end)
       |> Enum.reject(fn {_id, v} -> is_nil(v) end)
       |> Map.new()
 
@@ -240,8 +251,12 @@ defmodule Indivisual.Projections.Axis do
   defp coerce(_value, "linear"), do: nil
 
   defp coerce(%DateTime{} = dt, "time"), do: DateTime.to_unix(dt, :millisecond)
-  defp coerce(%NaiveDateTime{} = ndt, "time"), do: ndt |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix(:millisecond)
-  defp coerce(%Date{} = d, "time"), do: d |> DateTime.new!(~T[00:00:00]) |> DateTime.to_unix(:millisecond)
+
+  defp coerce(%NaiveDateTime{} = ndt, "time"),
+    do: ndt |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix(:millisecond)
+
+  defp coerce(%Date{} = d, "time"),
+    do: d |> DateTime.new!(~T[00:00:00]) |> DateTime.to_unix(:millisecond)
 
   defp coerce(value, "time") when is_binary(value) do
     cond do

@@ -343,7 +343,9 @@ defmodule Indivisual.Semantic do
             select: {e.node_id, e.embedding}
           )
 
-        query = if space_id, do: from([e, n] in query, where: n.space_id == ^space_id), else: query
+        query =
+          if space_id, do: from([e, n] in query, where: n.space_id == ^space_id), else: query
+
         embedded = Repo.all(query)
         upsert_scores(axis, model, vector, embedded)
         {:ok, %{scored: length(embedded), skipped: 0}}
@@ -388,7 +390,8 @@ defmodule Indivisual.Semantic do
 
       topics =
         Map.new(result.topics, fn {cluster, info} ->
-          {to_string(cluster), %{"label" => info.label, "terms" => info.terms, "size" => info.size}}
+          {to_string(cluster),
+           %{"label" => info.label, "terms" => info.terms, "size" => info.size}}
         end)
 
       attrs = %{model: model, k: k, topics: topics, placements: placements, space_id: space.id}

@@ -35,12 +35,22 @@ defmodule Indivisual.Repo.Migrations.CreateTimelogEntries do
       timestamps(type: :utc_datetime)
     end
 
-    # The range predicate every time-based view runs.
+    # Serves ownership filtering and the newest-first ordering every list uses.
+    #
+    # Measured, not assumed: this does NOT accelerate the `at(t)` lookup. That
+    # predicate ends in `valid_to IS NULL OR valid_to > t`, and the disjunction
+    # defeats a b-tree, so only the user_id equality drives the scan. At the
+    # sizes tested (10k entries/user) Postgres correctly prefers a sequential
+    # scan anyway. Revisit with a range type or a GiST index if per-user volume
+    # grows enough that it stops choosing one.
     create index(:timelog_entries, [:user_id, :valid_from])
     create index(:timelog_entries, [:user_id, :kind])
 
     # Open intervals are the ones a "still going?" query looks for.
-    create index(:timelog_entries, [:user_id], where: "valid_to IS NULL", name: :timelog_entries_open_index)
+    create index(:timelog_entries, [:user_id],
+             where: "valid_to IS NULL",
+             name: :timelog_entries_open_index
+           )
 
     # Sync idempotency: re-running a calendar sync must not duplicate rows.
     # Partial, because source_ref is null for locally authored entries and

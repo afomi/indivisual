@@ -67,6 +67,7 @@ defmodule Indivisual.Projections do
   def apply(%Projection{filter_config: filter}, nodes, edges) do
     filtered_nodes = filter_nodes(nodes, filter)
     node_ids = MapSet.new(filtered_nodes, & &1.id)
+
     filtered_edges =
       Enum.filter(edges, fn e ->
         MapSet.member?(node_ids, e.from_id) and MapSet.member?(node_ids, e.to_id)
@@ -85,11 +86,13 @@ defmodule Indivisual.Projections do
   end
 
   defp maybe_filter_by_kinds(nodes, nil), do: nodes
+
   defp maybe_filter_by_kinds(nodes, kinds) do
     Enum.filter(nodes, fn n -> n.kind in kinds end)
   end
 
   defp maybe_filter_by_ids(nodes, nil), do: nodes
+
   defp maybe_filter_by_ids(nodes, ids) do
     id_set = MapSet.new(ids)
     Enum.filter(nodes, fn n -> MapSet.member?(id_set, n.id) end)
@@ -109,8 +112,10 @@ defmodule Indivisual.Projections do
     else
       Enum.filter(nodes, fn node ->
         meta = node.metadata || %{}
+
         Enum.all?(meta_filters, fn {field, allowed} ->
           value = Map.get(meta, field)
+
           case value do
             nil -> false
             list when is_list(list) -> Enum.any?(list, &(&1 in allowed))

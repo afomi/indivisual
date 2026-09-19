@@ -25,10 +25,22 @@ defmodule Indivisual.Visual do
 
   @spec list_wardley_nodes :: any
   def list_wardley_nodes do
-    Repo.all(from u in "nodes",
-          # limit: 1000,
-          where: u.wardley_x > 0,
-          select: [:id, :wardley_x, :wardley_y, :z, :wardley_text, :hash, :name, :description, :kind])
+    Repo.all(
+      from u in "nodes",
+        # limit: 1000,
+        where: u.wardley_x > 0,
+        select: [
+          :id,
+          :wardley_x,
+          :wardley_y,
+          :z,
+          :wardley_text,
+          :hash,
+          :name,
+          :description,
+          :kind
+        ]
+    )
   end
 
   @doc """
@@ -173,10 +185,12 @@ defmodule Indivisual.Visual do
   end
 
   def list_wardley_links do
-    Repo.all(from u in "edges",
-      where: not is_nil(u.to_hash),
-      limit: 7000,
-      select: [:id, :from_id, :to_id, :from_hash, :to_hash, :description])
+    Repo.all(
+      from u in "edges",
+        where: not is_nil(u.to_hash),
+        limit: 7000,
+        select: [:id, :from_id, :to_id, :from_hash, :to_hash, :description]
+    )
   end
 
   @doc """

@@ -68,7 +68,8 @@ defmodule IndivisualWeb.TopoDataTest do
   end
 
   test "a space with no scored nodes ships empty records", %{conn: conn} do
-    space = Repo.insert!(%Space{name: "Empty", slug: "empty-#{System.unique_integer([:positive])}"})
+    space =
+      Repo.insert!(%Space{name: "Empty", slug: "empty-#{System.unique_integer([:positive])}"})
 
     html = conn |> get(~p"/topo/#{space.slug}") |> html_response(200)
 

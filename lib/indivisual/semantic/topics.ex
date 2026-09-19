@@ -154,7 +154,9 @@ defmodule Indivisual.Semantic.Topics do
       Enum.reduce(1..3, {[], gram}, fn seed, {found, matrix} ->
         eigenvector = power_iteration(matrix, n, seed)
         eigenvalue = VectorMath.dot_product(eigenvector, multiply(matrix, eigenvector))
-        {found ++ [scale(eigenvector, :math.sqrt(max(eigenvalue, 0.0)))], deflate(matrix, eigenvector, eigenvalue)}
+
+        {found ++ [scale(eigenvector, :math.sqrt(max(eigenvalue, 0.0)))],
+         deflate(matrix, eigenvector, eigenvalue)}
       end)
 
     coordinates =
@@ -260,6 +262,8 @@ defmodule Indivisual.Semantic.Topics do
     text
     |> String.downcase()
     |> String.split(~r/[^a-z]+/, trim: true)
-    |> Enum.filter(fn token -> String.length(token) > 2 and not MapSet.member?(excluded, token) end)
+    |> Enum.filter(fn token ->
+      String.length(token) > 2 and not MapSet.member?(excluded, token)
+    end)
   end
 end

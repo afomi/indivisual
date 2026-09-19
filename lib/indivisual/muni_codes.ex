@@ -153,7 +153,9 @@ defmodule Indivisual.MuniCodes do
   end
 
   # Freeform starting layout: a grid per city, Fairfield offset to the right.
-  defp grid_x("fairfield", index), do: 80.0 + @grid_cols * @cell_w + 200.0 + rem(index, @grid_cols) * @cell_w
+  defp grid_x("fairfield", index),
+    do: 80.0 + @grid_cols * @cell_w + 200.0 + rem(index, @grid_cols) * @cell_w
+
   defp grid_x(_city, index), do: 80.0 + rem(index, @grid_cols) * @cell_w
   defp grid_y(index), do: 80.0 + div(index, @grid_cols) * @cell_h
 

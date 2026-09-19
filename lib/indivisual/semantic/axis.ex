@@ -36,7 +36,14 @@ defmodule Indivisual.Semantic.Axis do
   @doc false
   def changeset(axis, attrs) do
     axis
-    |> cast(attrs, [:name, :positive_pole, :negative_pole, :positive_examples, :negative_examples, :is_active])
+    |> cast(attrs, [
+      :name,
+      :positive_pole,
+      :negative_pole,
+      :positive_examples,
+      :negative_examples,
+      :is_active
+    ])
     |> validate_required([:name, :positive_pole, :negative_pole])
     |> validate_length(:positive_examples, min: 2, message: "needs at least 2 anchor phrases")
     |> validate_length(:negative_examples, min: 2, message: "needs at least 2 anchor phrases")

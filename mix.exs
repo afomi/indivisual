@@ -80,6 +80,8 @@ defmodule Indivisual.MixProject do
       {:cloak_ecto, "~> 1.1"},
       {:req, "~> 0.5"},
       {:oban, "~> 2.18"},
+      # Required by Swoosh.Adapters.ExAwsAmazonSES.
+      {:gen_smtp, "~> 1.2"},
       {:ex_aws, "~> 2.5"},
       {:ex_aws_s3, "~> 2.5"},
       {:sweet_xml, "~> 0.7"},

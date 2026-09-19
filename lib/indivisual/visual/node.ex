@@ -46,7 +46,21 @@ defmodule Indivisual.Visual.Node do
   @doc false
   def changeset(node, attrs) do
     node
-    |> cast(attrs, [:name, :description, :kind, :x, :y, :z, :wardley_x, :wardley_y, :wardley_text, :heading, :magnitude, :metadata, :space_id])
+    |> cast(attrs, [
+      :name,
+      :description,
+      :kind,
+      :x,
+      :y,
+      :z,
+      :wardley_x,
+      :wardley_y,
+      :wardley_text,
+      :heading,
+      :magnitude,
+      :metadata,
+      :space_id
+    ])
     |> validate_required([:name])
   end
 end

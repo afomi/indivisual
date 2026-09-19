@@ -28,8 +28,12 @@ defmodule Indivisual.Space do
     case get_field(changeset, :slug) do
       nil ->
         name = get_field(changeset, :name) || ""
-        slug = name |> String.downcase() |> String.replace(~r/[^a-z0-9]+/, "-") |> String.trim("-")
+
+        slug =
+          name |> String.downcase() |> String.replace(~r/[^a-z0-9]+/, "-") |> String.trim("-")
+
         put_change(changeset, :slug, slug)
+
       _ ->
         changeset
     end
