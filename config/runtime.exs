@@ -80,12 +80,30 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  # No "example.com" fallback. An unset PHX_HOST silently poisons every
+  # absolute URL the app generates AND makes check_origin reject the real
+  # domain, so LiveView never connects — which is exactly what happened on
+  # 2026-09-18: /atlas retried its mount 10 times against a host the endpoint
+  # did not believe in. Fail at boot instead of shipping a broken socket.
+  host =
+    System.get_env("PHX_HOST") ||
+      raise """
+      environment variable PHX_HOST is missing.
+      Set it to the public hostname, e.g. indivisual.app
+      """
 
   config :indivisual, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :indivisual, IndivisualWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
+    # Explicit, rather than inferred from :url. The ACM cert carries a www
+    # SAN and the ALB serves both, so a visitor on www must be able to open a
+    # LiveView socket too — with only the apex allowed, /atlas would silently
+    # fall back to longpoll and retry forever for those visitors.
+    check_origin: [
+      "https://#{host}",
+      "https://www.#{host}"
+    ],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.

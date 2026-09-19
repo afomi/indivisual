@@ -9,6 +9,11 @@ defmodule Indivisual.Application do
   def start(_type, _args) do
     children = [
       IndivisualWeb.Telemetry,
+      # Cloak vault — MUST start before the Repo. It owns the ETS table that
+      # encrypted fields (users.github_access_token) read their cipher from;
+      # without it every write to such a field fails with a bare Ecto
+      # ChangeError that names the type, not the missing process.
+      Indivisual.Vault,
       Indivisual.Repo,
       {DNSCluster, query: Application.get_env(:indivisual, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Indivisual.PubSub},

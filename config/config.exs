@@ -27,6 +27,18 @@ config :indivisual,
 # Swoosh mailer — used by phx.gen.auth for confirmation / reset emails.
 config :indivisual, Indivisual.Mailer, adapter: Swoosh.Adapters.Local
 
+# Never log these, from any source (params, changesets in error reports).
+# github_access_token is a `repo`-scoped credential: it leaked into CloudWatch
+# once (2026-09-18) via a raised Ecto.ChangeError that printed the changeset.
+config :phoenix, :filter_parameters, [
+  "password",
+  "secret",
+  "token",
+  "github_access_token",
+  "client_secret",
+  "code"
+]
+
 # Disable Swoosh's API client by default; prod re-enables it for SES.
 config :swoosh, :api_client, false
 

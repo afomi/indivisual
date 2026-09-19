@@ -4,6 +4,7 @@ defmodule Indivisual.Accounts do
   """
 
   import Ecto.Query, warn: false
+  require Logger
   alias Indivisual.Repo
 
   alias Indivisual.Accounts.{User, UserToken, UserNotifier}
@@ -313,6 +314,15 @@ defmodule Indivisual.Accounts do
     end
     |> User.github_oauth_changeset(attrs)
     |> Repo.insert_or_update()
+  rescue
+    # A raised error here (e.g. the vault not running, so the encrypted token
+    # field fails to dump) would otherwise propagate to the error page, and
+    # Phoenix logs the offending changeset — which CONTAINS THE ACCESS TOKEN
+    # in plaintext. Convert it to a tagged tuple carrying only the exception
+    # type, never the value. See the 2026-09-18 leak.
+    error ->
+      Logger.error("GitHub sign-in failed: #{inspect(error.__struct__)}")
+      {:error, :github_user_upsert_failed}
   end
 
   def find_or_create_github_user(_attrs), do: {:error, :missing_github_uid}
