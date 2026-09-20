@@ -17,7 +17,7 @@ would be a good way to break it silently. --%>
       <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <div>
           <h1 class="text-xl font-semibold tracking-tight">
-            A shared model of reality, read from an append-only event stream.
+            Shared models of reality, read from an append-only event stream.
           </h1>
         </div>
         <dl
@@ -186,6 +186,31 @@ would be a good way to break it silently. --%>
       aria-label="Timeline"
     >
       <div class="atlas-timeline__bar">
+        <button
+          type="button"
+          id="atlas-timeline-collapse"
+          phx-click="toggle_timeline"
+          class="atlas-collapse"
+          aria-expanded={to_string(@timeline_open?)}
+          aria-controls="atlas-timeline-body"
+          title={if @timeline_open?, do: "Collapse timeline", else: "Expand timeline"}
+        >
+          <span aria-hidden="true">
+            <%= if @timeline_open? do %>
+              ▾
+            <% else %>
+              ▸
+            <% end %>
+          </span>
+          <span class="sr-only">
+            <%= if @timeline_open? do %>
+              Collapse timeline
+            <% else %>
+              Expand timeline
+            <% end %>
+          </span>
+        </button>
+
         <h2 class="atlas-timeline__title">
           Timeline
         </h2>
@@ -252,50 +277,163 @@ would be a good way to break it silently. --%>
         </div>
       </div>
 
-      <form
-        phx-change="range"
-        id="atlas-timeline-range"
-        class={["atlas-timeline__range", @show_all && "is-disabled"]}
+      <%!-- Not merely hidden: a collapsed band should not ship 16 mark
+      buttons and two range inputs the reader cannot see. --%>
+      <div
+        id="atlas-timeline-body"
+        hidden={not @timeline_open?}
       >
-        <label
-          for="atlas-timeline-from"
-          class="sr-only"
-        >
-          Range start
-        </label>
-        <input
-          id="atlas-timeline-from"
-          type="range"
-          name="from"
-          min="0"
-          max={max(length(@all_events) - 1, 0)}
-          value={@range_from || 0}
-          disabled={@show_all}
-          aria-valuetext={index_label(@all_events, @range_from || 0)}
-        />
-        <label
-          for="atlas-timeline-to"
-          class="sr-only"
-        >
-          Range end
-        </label>
-        <input
-          id="atlas-timeline-to"
-          type="range"
-          name="to"
-          min="0"
-          max={max(length(@all_events) - 1, 0)}
-          value={@range_to || max(length(@all_events) - 1, 0)}
-          disabled={@show_all}
-          aria-valuetext={index_label(@all_events, @range_to || max(length(@all_events) - 1, 0))}
-        />
-      </form>
+        <%= if @timeline_open? do %>
+          <form
+            phx-change="range"
+            id="atlas-timeline-range"
+            class={["atlas-timeline__range", @show_all && "is-disabled"]}
+          >
+            <label
+              for="atlas-timeline-from"
+              class="sr-only"
+            >
+              Range start
+            </label>
+            <input
+              id="atlas-timeline-from"
+              type="range"
+              name="from"
+              min="0"
+              max={max(length(@all_events) - 1, 0)}
+              value={@range_from || 0}
+              disabled={@show_all}
+              aria-valuetext={index_label(@all_events, @range_from || 0)}
+            />
+            <label
+              for="atlas-timeline-to"
+              class="sr-only"
+            >
+              Range end
+            </label>
+            <input
+              id="atlas-timeline-to"
+              type="range"
+              name="to"
+              min="0"
+              max={max(length(@all_events) - 1, 0)}
+              value={@range_to || max(length(@all_events) - 1, 0)}
+              disabled={@show_all}
+              aria-valuetext={
+                index_label(@all_events, @range_to || max(length(@all_events) - 1, 0))
+              }
+            />
+          </form>
+
+          <%!-- Marks: real time horizontally, simultaneity stacked vertically.
+      No horizontal scale separates 12 events that share a timestamp, so the
+      band stops trying and stacks them instead. --%>
+          <%= if @timeline.marks != [] do %>
+            <div
+              id="atlas-timeline-marks"
+              class="atlas-marks"
+              style={"--lanes: #{@timeline.lanes}"}
+              aria-label="Events positioned by time"
+            >
+              <%= for tick <- timeline_ticks(@timeline) do %>
+                <span
+                  class="atlas-marks__tick"
+                  style={"left: #{tick.x}%"}
+                  aria-hidden="true"
+                >
+                  <span class="atlas-marks__tick-label">{tick.label}</span>
+                </span>
+              <% end %>
+
+              <%= for mark <- @timeline.marks do %>
+                <button
+                  type="button"
+                  phx-click="select_event"
+                  phx-value-id={mark.event_id}
+                  class={[
+                    "atlas-marks__mark",
+                    truth_classes(mark.event.truth_state),
+                    @selected && mark.event_id == @selected.event_id && "is-selected"
+                  ]}
+                  style={"left: #{mark.x}%; --lane: #{mark.lane}"}
+                  title={"#{date(mark.time)} · #{Event.title(mark.event)}"}
+                  aria-label={"#{date(mark.time)}: #{Event.title(mark.event)}"}
+                ></button>
+              <% end %>
+
+              <%= if @timeline.overflow > 0 do %>
+                <p class="atlas-marks__overflow">
+                  +{@timeline.overflow} more at these times
+                </p>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <%!-- Collapsed, the timeline states what it is filtering to, in the same
+      register as the projection and source rows above. --%>
+      <p
+        id="atlas-timeline-summary"
+        class="atlas-collapsed"
+        hidden={@timeline_open?}
+      >
+        <%= if @show_all do %>
+          All {length(@all_events)} events.
+        <% else %>
+          {length(@events)} of {length(@all_events)} events ·
+          <%= if @range_from || @range_to do %>
+            {range_label(@all_events, @range_from, @range_to)}
+          <% else %>
+            full range
+          <% end %>
+        <% end %>
+      </p>
 
       <%!-- Scrub within the selected range. --%>
+      <div class="atlas-timeline__scrub-head">
+        <button
+          type="button"
+          id="atlas-scrubber-collapse"
+          phx-click="toggle_scrubber"
+          class="atlas-collapse"
+          aria-expanded={to_string(@scrubber_open?)}
+          aria-controls="atlas-scrubber"
+          title={if @scrubber_open?, do: "Collapse scrubber", else: "Expand scrubber"}
+        >
+          <span aria-hidden="true">
+            <%= if @scrubber_open? do %>
+              ▾
+            <% else %>
+              ▸
+            <% end %>
+          </span>
+          <span class="sr-only">
+            {if @scrubber_open?, do: "Collapse scrubber", else: "Expand scrubber"}
+          </span>
+        </button>
+
+        <%!-- Collapsed, the position still reads as a line of text. --%>
+        <p
+          id="atlas-scrubber-summary"
+          class="atlas-collapsed"
+          hidden={@scrubber_open?}
+        >
+          <%= if @selected do %>
+            Event {(@selected_index || 0) + 1} of {length(@events)} · {date(
+              Event.effective_time(@selected)
+            )}
+          <% else %>
+            No events match the current filter.
+          <% end %>
+        </p>
+      </div>
+
       <form
         phx-change="scrub"
         id="atlas-scrubber"
         class="atlas-timeline__scrub"
+        hidden={not @scrubber_open?}
       >
         <label
           for="atlas-scrubber-input"
@@ -326,80 +464,8 @@ would be a good way to break it silently. --%>
       </form>
     </section>
 
-    <div class="grid gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[15rem_22rem_minmax(0,1fr)] lg:items-start">
-      <%!-- ============ Column 1: sources, legend, and the event log ============ --%>
-      <div class="space-y-6">
-        <%!-- The legend that lived here now opens from the nav's info button;
-        this keeps the column's landmark so ordering stays stable. --%>
-        <aside
-          id="atlas-rail"
-          class="sr-only"
-          aria-label="Legend"
-        >
-          Truth states are documented in the legend dialog.
-        </aside>
-        <div>
-          <h2 class="mb-2 text-sm font-semibold">
-            Activity
-          </h2>
-          <ol
-            id="atlas-activity"
-            class="space-y-1"
-            aria-label="Activity, in source order"
-          >
-            <%= for {event, i} <- Enum.with_index(@events) do %>
-              <li id={"atlas-activity-#{i}"}>
-                <button
-                  type="button"
-                  phx-click="select_event"
-                  phx-value-id={event.event_id}
-                  aria-current={
-                    if @selected && event.event_id == @selected.event_id, do: "true", else: nil
-                  }
-                  class={[
-                    "atlas-activity__item",
-                    @selected && event.event_id == @selected.event_id && "is-selected",
-                    @selected_index && i > @selected_index && "is-future"
-                  ]}
-                >
-                  <span class="flex items-center justify-between gap-2">
-                    <time
-                      datetime={stamp(Event.effective_time(event))}
-                      class="font-mono text-[11px] text-slate-500"
-                    >
-                      {date(Event.effective_time(event))}
-                    </time>
-                    <span class={[
-                      "inline-flex items-center gap-1 rounded border px-1 text-[10px]",
-                      truth_classes(event.truth_state)
-                    ]}>
-                      <span aria-hidden="true">
-                        {truth_glyph(event.truth_state)}
-                      </span>
-                      {event.truth_state}
-                    </span>
-                  </span>
-                  <span class="mt-0.5 block font-medium text-slate-900">
-                    <%= if Event.annotation?(event) do %>
-                      <span class="rounded border border-slate-300 px-1 text-[10px] uppercase">
-                        annotation
-                      </span>
-                    <% end %>
-                    {Event.title(event)}
-                  </span>
-                  <span class="block text-slate-500">
-                    {source_title(@sources, event.source_id)} · affects {length(
-                      Event.affected_refs(event)
-                    )}
-                  </span>
-                </button>
-              </li>
-            <% end %>
-          </ol>
-        </div>
-      </div>
-
-      <%!-- ============ Column 2: entity / selected-event detail ============ --%>
+    <div class="grid gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[22rem_15rem_minmax(0,1fr)] lg:items-start">
+      <%!-- ============ Column 1: entity / selected-event detail ============ --%>
       <section
         id="atlas-reader"
         class="space-y-4"
@@ -408,20 +474,33 @@ would be a good way to break it silently. --%>
         <%= if @selected do %>
           <article
             id="atlas-selected"
-            class="rounded-lg border border-slate-200 bg-white p-3"
+            class="atlas-record"
             aria-live="polite"
           >
-            <p class="text-xs uppercase tracking-[0.12em] text-slate-500">
+            <%!-- The type is a typed reference, not a label: showing its
+            segments makes the namespacing legible instead of leaving one
+            opaque dotted string. --%>
+            <p class="atlas-record__type">
               <%= if Event.annotation?(@selected) do %>
-                Annotation
+                <span class="atlas-record__kind is-annotation">annotation</span>
               <% else %>
-                Event
+                <span class="atlas-record__kind">event</span>
               <% end %>
-              · {@selected.event_type}
+              <span class="atlas-ref">
+                <%= for {seg, i} <- Enum.with_index(String.split(@selected.event_type, ".")) do %>
+                  <%= if i > 0 do %>
+                    <span
+                      class="atlas-ref__sep"
+                      aria-hidden="true"
+                    >/</span>
+                  <% end %>
+                  <span class="atlas-ref__seg">{seg}</span>
+                <% end %>
+              </span>
             </p>
             <h2
               id="atlas-selected-title"
-              class="mt-1 text-base font-semibold"
+              class="atlas-record__title"
             >
               {Event.title(@selected)}
             </h2>
@@ -436,9 +515,71 @@ would be a good way to break it silently. --%>
               </p>
             <% end %>
 
-            <dl class="mt-3 grid grid-cols-[7rem_minmax(0,1fr)] gap-x-2 gap-y-1 text-xs">
+            <%!-- The field labels below explain their own vocabulary; this
+            answers the different question of what THIS record means. --%>
+            <%= if @explain_available? do %>
+              <div class="atlas-explain">
+                <%= case @explain_event do %>
+                  <% {_id, :loading} -> %>
+                    <p
+                      class="atlas-explain__status"
+                      aria-live="polite"
+                    >
+                      Reading the record…
+                    </p>
+                  <% {_id, text} -> %>
+                    <div
+                      id="atlas-explain-result"
+                      class="atlas-explain__result"
+                      aria-live="polite"
+                    >
+                      <p class="atlas-explain__text">{text}</p>
+                      <p class="atlas-explain__caveat">
+                        Written by a language model from the record above. It can be wrong —
+                        the record is the source, not this.
+                        <button
+                          type="button"
+                          phx-click="hide_explain_event"
+                          class="atlas-term"
+                        >
+                          Hide
+                        </button>
+                      </p>
+                    </div>
+                  <% _ -> %>
+                    <button
+                      type="button"
+                      id="atlas-explain-event"
+                      phx-click="explain_event"
+                      class="atlas-explain__button"
+                    >
+                      Explain this record
+                    </button>
+                <% end %>
+
+                <%= if @explain_error do %>
+                  <p
+                    class="atlas-explain__status"
+                    role="alert"
+                  >
+                    {@explain_error}
+                  </p>
+                <% end %>
+              </div>
+            <% end %>
+
+            <dl class="atlas-fields">
               <dt class="text-slate-500">
-                Truth state
+                <button
+                  type="button"
+                  phx-click="explain"
+                  phx-value-term="truth_state"
+                  class="atlas-term"
+                  aria-haspopup="dialog"
+                  title="What does this mean?"
+                >
+                  Truth state
+                </button>
               </dt>
               <dd id="atlas-selected-truth">
                 <span class={[
@@ -452,19 +593,46 @@ would be a good way to break it silently. --%>
                 </span>
               </dd>
               <dt class="text-slate-500">
-                Occurred
+                <button
+                  type="button"
+                  phx-click="explain"
+                  phx-value-term="occurred"
+                  class="atlas-term"
+                  aria-haspopup="dialog"
+                  title="What does this mean?"
+                >
+                  Occurred
+                </button>
               </dt>
               <dd>
                 {stamp(@selected.occurred_at)}
               </dd>
               <dt class="text-slate-500">
-                Observed
+                <button
+                  type="button"
+                  phx-click="explain"
+                  phx-value-term="observed"
+                  class="atlas-term"
+                  aria-haspopup="dialog"
+                  title="What does this mean?"
+                >
+                  Observed
+                </button>
               </dt>
               <dd>
                 {stamp(@selected.observed_at)}
               </dd>
               <dt class="text-slate-500">
-                Source
+                <button
+                  type="button"
+                  phx-click="explain"
+                  phx-value-term="source"
+                  class="atlas-term"
+                  aria-haspopup="dialog"
+                  title="What does this mean?"
+                >
+                  Source
+                </button>
               </dt>
               <dd id="atlas-selected-source">
                 <%= if url = source_url(@sources, @selected.source_id) do %>
@@ -484,7 +652,16 @@ would be a good way to break it silently. --%>
                 </span>
               </dd>
               <dt class="text-slate-500">
-                Stream
+                <button
+                  type="button"
+                  phx-click="explain"
+                  phx-value-term="stream"
+                  class="atlas-term"
+                  aria-haspopup="dialog"
+                  title="What does this mean?"
+                >
+                  Stream
+                </button>
               </dt>
               <dd>
                 {@selected.stream_id} · seq {sequence(@selected.sequence)}
@@ -505,7 +682,16 @@ would be a good way to break it silently. --%>
                 </dd>
               <% end %>
               <dt class="text-slate-500">
-                Affects
+                <button
+                  type="button"
+                  phx-click="explain"
+                  phx-value-term="affects"
+                  class="atlas-term"
+                  aria-haspopup="dialog"
+                  title="What does this mean?"
+                >
+                  Affects
+                </button>
               </dt>
               <dd id="atlas-selected-affects">
                 <ul
@@ -514,52 +700,99 @@ would be a good way to break it silently. --%>
                 >
                   <%= for ref <- @selected.subject_refs do %>
                     <li>
+                      <%!-- An affected entity is a linked object: its kind
+                      carries a schema.org type, so a reader (or a consumer)
+                      knows what sort of thing it is, not just its name. --%>
                       <button
                         type="button"
                         phx-click="focus_entity"
                         phx-value-ref={ref}
-                        class="rounded border border-blue-300 bg-blue-50 px-1.5 text-blue-800"
+                        class="atlas-entity"
+                        title={entity_title(@read_model, ref)}
                       >
-                        {entity_label(@read_model, ref)}
+                        <span class="atlas-entity__name">{entity_label(@read_model, ref)}</span>
+                        <%= if type = entity_schema_type(@read_model, ref) do %>
+                          <span class="atlas-entity__type">{type}</span>
+                        <% end %>
                       </button>
                     </li>
                   <% end %>
                 </ul>
               </dd>
               <dt class="text-slate-500">
-                Provenance
+                <button
+                  type="button"
+                  phx-click="explain"
+                  phx-value-term="provenance"
+                  class="atlas-term"
+                  aria-haspopup="dialog"
+                  title="What does this mean?"
+                >
+                  Provenance
+                </button>
               </dt>
               <dd id="atlas-selected-provenance">
                 <ul
-                  class="space-y-0.5"
+                  class="atlas-prov"
                   role="list"
                 >
-                  <%= for {k, v} <- Enum.sort(@selected.provenance) do %>
-                    <li class="break-all">
-                      <span class="text-slate-500">
-                        {k}:
-                      </span>
-                      <%= if is_binary(v) and String.starts_with?(v, "http") do %>
-                        <a
-                          href={v}
-                          target="_blank"
-                          rel="noopener"
-                          class="text-blue-700 underline underline-offset-2"
-                        >
-                          {v}
-                        </a>
-                      <% else %>
-                        {to_string(v)}
+                  <%= for {k, v} <- provenance_order(@selected.provenance) do %>
+                    <li class="atlas-prov__row">
+                      <span class="atlas-prov__key">{k}</span>
+                      <%= cond do %>
+                        <% link?(v) -> %>
+                          <a
+                            href={v}
+                            target="_blank"
+                            rel="noopener"
+                            class="atlas-prov__link"
+                            title={v}
+                          >
+                            {URI.parse(v).host}<span class="atlas-prov__path">{URI.parse(v).path}</span>
+                          </a>
+                        <% k in ["content_hash", "txid"] -> %>
+                          <%!-- An opaque digest: what a reader compares is the
+                          head and tail, and the whole value stays available. --%>
+                          <code
+                            class="atlas-prov__digest"
+                            title={to_string(v)}
+                          >{abbrev(to_string(v))}</code>
+                        <% true -> %>
+                          <span class="atlas-prov__value">{to_string(v)}</span>
                       <% end %>
                     </li>
                   <% end %>
                 </ul>
               </dd>
               <dt class="text-slate-500">
-                Event id
+                <button
+                  type="button"
+                  phx-click="explain"
+                  phx-value-term="event_id"
+                  class="atlas-term"
+                  aria-haspopup="dialog"
+                  title="What does this mean?"
+                >
+                  Event id
+                </button>
               </dt>
-              <dd class="break-all font-mono text-[11px]">
-                {@selected.event_id}
+              <dd id="atlas-selected-id">
+                <%!-- Already a typed reference — scheme, stream, kind, name.
+                Showing the segments makes that structure visible. --%>
+                <span
+                  class="atlas-ref atlas-ref--id"
+                  title={@selected.event_id}
+                >
+                  <%= for {seg, i} <- Enum.with_index(id_segments(@selected.event_id)) do %>
+                    <%= if i > 0 do %>
+                      <span
+                        class="atlas-ref__sep"
+                        aria-hidden="true"
+                      >:</span>
+                    <% end %>
+                    <span class="atlas-ref__seg">{seg}</span>
+                  <% end %>
+                </span>
               </dd>
             </dl>
 
@@ -698,19 +931,177 @@ would be a good way to break it silently. --%>
               </.form>
             <% end %>
 
-            <p class="mt-3 text-[11px] text-slate-500">
-              Share this context:
+            <%!-- Share is its own element, not a line of link text. What a
+            person wants to know before sending it is WHAT the link reproduces;
+            the URL itself is long and percent-encoded, so it is carried rather
+            than displayed in full. --%>
+            <aside
+              id="atlas-share"
+              class="atlas-share"
+              aria-label="Share this view"
+            >
+              <div class="atlas-share__head">
+                <h3 class="atlas-share__title">Share this view</h3>
+                <button
+                  type="button"
+                  id="atlas-share-copy"
+                  class="atlas-share__copy"
+                  phx-hook=".CopyLink"
+                  data-url={share_url(@share_path)}
+                >
+                  <span class="atlas-share__copy-label">Copy link</span>
+                </button>
+              </div>
+
+              <p class="atlas-share__summary">
+                Reproduces: {share_summary(assigns)}
+              </p>
+
+              <%!-- The address stays visible and selectable for anyone who
+              would rather take it by hand. --%>
               <.link
                 id="atlas-share-link"
                 patch={@share_path}
-                class="break-all font-mono text-blue-700 underline underline-offset-2"
+                class="atlas-share__url"
+                title={share_url(@share_path)}
               >
                 {@share_path}
               </.link>
-            </p>
+            </aside>
+
+            <script :type={Phoenix.LiveView.ColocatedHook} name=".CopyLink">
+              export default {
+                mounted() {
+                  const label = this.el.querySelector(".atlas-share__copy-label")
+                  const original = label.textContent
+
+                  this.el.addEventListener("click", async () => {
+                    const url = this.el.dataset.url
+                    let ok = false
+
+                    try {
+                      // Only available on a secure origin; the fallback below
+                      // covers plain http in local development.
+                      await navigator.clipboard.writeText(url)
+                      ok = true
+                    } catch {
+                      const field = document.createElement("textarea")
+                      field.value = url
+                      field.setAttribute("readonly", "")
+                      field.style.position = "fixed"
+                      field.style.opacity = "0"
+                      document.body.appendChild(field)
+                      field.select()
+                      try { ok = document.execCommand("copy") } catch { ok = false }
+                      document.body.removeChild(field)
+                    }
+
+                    label.textContent = ok ? "Copied" : "Press \u2318C to copy"
+                    this.el.classList.toggle("is-copied", ok)
+
+                    clearTimeout(this.resetTimer)
+                    this.resetTimer = setTimeout(() => {
+                      label.textContent = original
+                      this.el.classList.remove("is-copied")
+                    }, 2000)
+                  })
+                },
+
+                destroyed() {
+                  clearTimeout(this.resetTimer)
+                }
+              }
+            </script>
           </article>
         <% end %>
       </section>
+
+      <%!-- ============ Column 2: the event log ============ --%>
+      <div class="space-y-6">
+        <%!-- The legend that lived here now opens from the nav's info button;
+        this keeps the column's landmark so ordering stays stable. --%>
+        <aside
+          id="atlas-rail"
+          class="sr-only"
+          aria-label="Legend"
+        >
+          Truth states are documented in the legend dialog.
+        </aside>
+        <div>
+          <div class="atlas-activity__head">
+            <h2 class="text-sm font-semibold">
+              Activity
+            </h2>
+            <button
+              type="button"
+              id="atlas-activity-toggle"
+              phx-click="toggle_marks"
+              class="atlas-term"
+              aria-pressed={to_string(@marks?)}
+            >
+              <%= if @marks? do %>
+                show as list
+              <% else %>
+                show on timeline
+              <% end %>
+            </button>
+          </div>
+          <ol
+            id="atlas-activity"
+            class={["space-y-1", @marks? && "atlas-activity--compact"]}
+            aria-label="Activity, in source order"
+          >
+            <%= for {event, i} <- Enum.with_index(@events) do %>
+              <li id={"atlas-activity-#{i}"}>
+                <button
+                  type="button"
+                  phx-click="select_event"
+                  phx-value-id={event.event_id}
+                  aria-current={
+                    if @selected && event.event_id == @selected.event_id, do: "true", else: nil
+                  }
+                  class={[
+                    "atlas-activity__item",
+                    @selected && event.event_id == @selected.event_id && "is-selected",
+                    @selected_index && i > @selected_index && "is-future"
+                  ]}
+                >
+                  <span class="flex items-center justify-between gap-2">
+                    <time
+                      datetime={stamp(Event.effective_time(event))}
+                      class="font-mono text-[11px] text-slate-500"
+                    >
+                      {date(Event.effective_time(event))}
+                    </time>
+                    <span class={[
+                      "inline-flex items-center gap-1 rounded border px-1 text-[10px]",
+                      truth_classes(event.truth_state)
+                    ]}>
+                      <span aria-hidden="true">
+                        {truth_glyph(event.truth_state)}
+                      </span>
+                      {event.truth_state}
+                    </span>
+                  </span>
+                  <span class="mt-0.5 block font-medium text-slate-900">
+                    <%= if Event.annotation?(event) do %>
+                      <span class="rounded border border-slate-300 px-1 text-[10px] uppercase">
+                        annotation
+                      </span>
+                    <% end %>
+                    {Event.title(event)}
+                  </span>
+                  <span class="block text-slate-500">
+                    {source_title(@sources, event.source_id)} · affects {length(
+                      Event.affected_refs(event)
+                    )}
+                  </span>
+                </button>
+              </li>
+            <% end %>
+          </ol>
+        </div>
+      </div>
 
       <%!-- ============ Column 3: the canvas, filling remaining width ============ --%>
       <section
@@ -728,6 +1119,67 @@ would be a good way to break it silently. --%>
               · {map_size(@read_model.entities)} entities · {length(@read_model.relationships)} relationships
             </span>
           </h2>
+
+          <%!-- A map positions by real coordinates, so an entity without them
+        has nowhere to go. The count says how much of the record is on the map
+        rather than implying these dots are all of it. --%>
+          <%= if @geo.count > 0 do %>
+            <div
+              id="atlas-map"
+              class="atlas-map"
+              aria-label="Entities with known locations"
+            >
+              <svg
+                class="atlas-map__plane"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <%= for gx <- [25, 50, 75] do %>
+                  <line
+                    x1={gx}
+                    y1="0"
+                    x2={gx}
+                    y2="100"
+                    class="atlas-map__grid"
+                  />
+                  <line
+                    x1="0"
+                    y1={gx}
+                    x2="100"
+                    y2={gx}
+                    class="atlas-map__grid"
+                  />
+                <% end %>
+              </svg>
+
+              <%= for point <- @geo.points do %>
+                <button
+                  type="button"
+                  phx-click="focus_entity"
+                  phx-value-ref={point.ref}
+                  class={[
+                    "atlas-map__pin",
+                    @entity == point.ref && "is-focused",
+                    point.ref in @affected && "is-affected"
+                  ]}
+                  style={"left: #{point.x}%; top: #{point.y}%"}
+                  title={"#{point.entity.label} · #{point.lat}, #{point.lng}"}
+                >
+                  <span class="atlas-map__label">{point.entity.label}</span>
+                </button>
+              <% end %>
+            </div>
+
+            <p class="atlas-map__caption">
+              {@geo.count} of {@geo.count + @geo.unlocated_count} entities have a known location.
+              <%= if @geo.unlocated_count > 0 do %>
+                <span class="atlas-map__missing">
+                  {@geo.unlocated_count} not shown.
+                </span>
+              <% end %>
+            </p>
+          <% end %>
           <%= if @entity do %>
             <p class="text-xs text-slate-600">
               Focused on <strong>{entity_label(@read_model, @entity)}</strong>
@@ -911,6 +1363,67 @@ would be a good way to break it silently. --%>
         </details>
       </section>
     </div>
+
+    <%= if @explain do %>
+      <div
+        id="atlas-explain-modal"
+        class="atlas-modal"
+        phx-window-keydown="hide_explain"
+        phx-key="Escape"
+      >
+        <div
+          class="atlas-modal__backdrop"
+          phx-click="hide_explain"
+          aria-hidden="true"
+        >
+        </div>
+        <div
+          class="atlas-modal__panel atlas-modal__panel--narrow"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="atlas-explain-title"
+        >
+          <div class="atlas-modal__head">
+            <h2
+              id="atlas-explain-title"
+              class="atlas-modal__title"
+            >
+              {@explain.label}
+            </h2>
+            <button
+              type="button"
+              id="atlas-explain-close"
+              phx-click="hide_explain"
+              class="atlas-modal__close"
+              aria-label="Close"
+              phx-mounted={JS.focus()}
+            >
+              ✕
+            </button>
+          </div>
+
+          <p class="atlas-explain__summary">
+            {@explain.summary}
+          </p>
+          <p class="atlas-explain__why">
+            <span class="atlas-explain__why-label">Why it is here:</span>
+            {@explain.why}
+          </p>
+
+          <%= if @explain.slug == "truth_state" do %>
+            <p class="atlas-modal__note">
+              <button
+                type="button"
+                phx-click="show_legend"
+                class="atlas-term"
+              >
+                See all six truth states
+              </button>
+            </p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
 
     <%= if @show_legend do %>
       <%!-- phx-window-keydown gives Escape without a hook; the backdrop closes

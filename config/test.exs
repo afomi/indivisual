@@ -63,3 +63,6 @@ config :indivisual, Indivisual.Embeddings, adapter: Indivisual.Embeddings.Fake
 config :ueberauth, Ueberauth.Strategy.Github.OAuth,
   client_id: "test-client-id",
   client_secret: "test-client-secret"
+
+# Explanations never reach the network in tests.
+config :indivisual, Indivisual.Explain, adapter: Indivisual.Explain.Fake

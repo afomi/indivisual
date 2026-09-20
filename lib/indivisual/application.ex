@@ -18,6 +18,9 @@ defmodule Indivisual.Application do
       {DNSCluster, query: Application.get_env(:indivisual, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Indivisual.PubSub},
       {Task.Supervisor, name: Indivisual.TaskSupervisor},
+      # Derived, in-memory: generated explanations, cached so the slow part
+      # happens once per record rather than once per reader.
+      Indivisual.Explain.Cache,
       # Background jobs (embedding generation for the topo semantic axes).
       {Oban, Application.fetch_env!(:indivisual, Oban)},
       # In-memory Atlas event feed: loads source adapters, broadcasts appends.

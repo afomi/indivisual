@@ -17,8 +17,12 @@ defmodule IndivisualWeb.AtlasLive do
   alias Indivisual.Atlas
   alias Indivisual.Atlas.Event
   alias Indivisual.Atlas.Feed
+  alias Indivisual.Atlas.Glossary
+  alias Indivisual.Explain
   alias Indivisual.Atlas.Projections
   alias Indivisual.Atlas.Sources.Annotations
+  alias Indivisual.Atlas.Geo
+  alias Indivisual.Atlas.Timeline
   alias Indivisual.Atlas.Topology
 
   @truth_glyphs %{
@@ -71,7 +75,15 @@ defmodule IndivisualWeb.AtlasLive do
      |> assign(:range_to, nil)
      |> assign(:show_all, false)
      |> assign(:all_events, [])
-     |> assign(:show_legend, false)}
+     |> assign(:show_legend, false)
+     |> assign(:marks?, false)
+     |> assign(:timeline_open?, true)
+     |> assign(:scrubber_open?, true)
+     |> assign(:timeline, Timeline.build([]))
+     |> assign(:explain, nil)
+     |> assign(:explain_event, nil)
+     |> assign(:explain_error, nil)
+     |> assign(:explain_available?, Explain.available?())}
   end
 
   @impl true
@@ -96,6 +108,11 @@ defmodule IndivisualWeb.AtlasLive do
      |> assign(:range_from, parse_index(params["from"]))
      |> assign(:range_to, parse_index(params["to"]))
      |> assign(:show_all, params["all"] == "1")
+     |> assign(:marks?, params["marks"] == "1")
+     |> assign(:timeline_open?, params["tl"] != "0")
+     |> assign(:scrubber_open?, params["sc"] != "0")
+     |> assign(:explain_event, nil)
+     |> assign(:explain_error, nil)
      |> load()}
   end
 
@@ -156,6 +173,58 @@ defmodule IndivisualWeb.AtlasLive do
   # would share, so it stays out of the shareable path.
   def handle_event("hide_legend", _params, socket) do
     {:noreply, assign(socket, :show_legend, false)}
+  end
+
+  # Reference material, like the legend: not part of a view someone would
+  # share, so it stays out of the URL.
+  def handle_event("explain", %{"term" => slug}, socket) do
+    case Glossary.get(slug) do
+      nil -> {:noreply, socket}
+      term -> {:noreply, assign(socket, :explain, Map.put(term, :slug, slug))}
+    end
+  end
+
+  def handle_event("hide_explain", _params, socket) do
+    {:noreply, assign(socket, :explain, nil)}
+  end
+
+  # Runs off the LiveView process so a slow model never blocks the page; the
+  # result arrives as a message and is shown if the selection has not moved on.
+  def handle_event("explain_event", _params, %{assigns: %{selected: nil}} = socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("explain_event", _params, socket) do
+    %{selected: event, events: events, sources: sources} = socket.assigns
+    parent = self()
+
+    Task.Supervisor.start_child(Indivisual.TaskSupervisor, fn ->
+      result = Explain.explain_event(event, events, sources: sources)
+      send(parent, {:explanation, event.event_id, result})
+    end)
+
+    {:noreply,
+     socket
+     |> assign(:explain_event, {event.event_id, :loading})
+     |> assign(:explain_error, nil)}
+  end
+
+  def handle_event("hide_explain_event", _params, socket) do
+    {:noreply, socket |> assign(:explain_event, nil) |> assign(:explain_error, nil)}
+  end
+
+  # Collapsed state rides the URL like every other view choice, so a shared
+  # link reproduces the layout someone was actually looking at.
+  def handle_event("toggle_timeline", _params, socket) do
+    {:noreply, patch(socket, tl: not socket.assigns.timeline_open?)}
+  end
+
+  def handle_event("toggle_scrubber", _params, socket) do
+    {:noreply, patch(socket, sc: not socket.assigns.scrubber_open?)}
+  end
+
+  def handle_event("toggle_marks", _params, socket) do
+    {:noreply, patch(socket, marks: not socket.assigns.marks?)}
   end
 
   def handle_event("toggle_all", _params, socket) do
@@ -235,6 +304,28 @@ defmodule IndivisualWeb.AtlasLive do
     end
   end
 
+  # A stale result (the reader moved on) is dropped rather than shown against
+  # the wrong record.
+  @impl true
+  def handle_info({:explanation, event_id, result}, socket) do
+    case socket.assigns.explain_event do
+      {^event_id, _} ->
+        case result do
+          {:ok, text} ->
+            {:noreply, assign(socket, :explain_event, {event_id, text})}
+
+          {:error, reason} ->
+            {:noreply,
+             socket
+             |> assign(:explain_event, nil)
+             |> assign(:explain_error, explain_error_message(reason))}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   @impl true
   def handle_info({:atlas_event, _event}, socket) do
     {:noreply,
@@ -280,6 +371,8 @@ defmodule IndivisualWeb.AtlasLive do
     socket
     |> assign(:all_events, all_events)
     |> assign(:events, events)
+    |> assign(:timeline, Timeline.build(events))
+    |> assign(:geo, Geo.project(read_model.entities))
     |> assign(:selected, selected)
     |> assign(:selected_index, selected_index)
     |> assign(:read_model, read_model)
@@ -323,7 +416,10 @@ defmodule IndivisualWeb.AtlasLive do
       sources: socket.assigns.source_filter,
       from: socket.assigns[:range_from],
       to: socket.assigns[:range_to],
-      all: socket.assigns[:show_all]
+      all: socket.assigns[:show_all],
+      marks: socket.assigns[:marks?],
+      tl: socket.assigns[:timeline_open?],
+      sc: socket.assigns[:scrubber_open?]
     }
 
     next = Map.merge(current, Map.new(changes))
@@ -373,7 +469,10 @@ defmodule IndivisualWeb.AtlasLive do
       sources: socket.assigns.source_filter,
       from: socket.assigns.range_from,
       to: socket.assigns.range_to,
-      all: socket.assigns.show_all
+      all: socket.assigns.show_all,
+      marks: socket.assigns.marks?,
+      tl: socket.assigns.timeline_open?,
+      sc: socket.assigns.scrubber_open?
     })
   end
 
@@ -390,6 +489,10 @@ defmodule IndivisualWeb.AtlasLive do
       |> maybe_put(:from, opts[:from])
       |> maybe_put(:to, opts[:to])
       |> maybe_put(:all, if(opts[:all], do: "1", else: nil))
+      |> maybe_put(:marks, if(opts[:marks], do: "1", else: nil))
+      # Only the non-default (collapsed) state needs to appear in the URL.
+      |> maybe_put(:tl, if(Map.get(opts, :tl, true) == false, do: "0", else: nil))
+      |> maybe_put(:sc, if(Map.get(opts, :sc, true) == false, do: "0", else: nil))
 
     ~p"/atlas?#{query}"
   end
@@ -460,6 +563,113 @@ defmodule IndivisualWeb.AtlasLive do
     "delivered" => "carried out in the world",
     "superseded" => "replaced by a later record"
   }
+
+  defp explain_error_message(:unavailable),
+    do: "No explanation backend is reachable right now."
+
+  defp explain_error_message({:model_not_found, model}),
+    do: "The model #{model} is not available."
+
+  defp explain_error_message(_), do: "Could not generate an explanation."
+
+  @doc """
+  The absolute URL for a share path, when the endpoint knows its host.
+
+  A shared link has to work outside this browser tab, so it carries the scheme
+  and host rather than the bare path the in-page router uses.
+  """
+  def share_url(path) do
+    IndivisualWeb.Endpoint.url() <> path
+  end
+
+  @doc """
+  A short, readable description of what a shared link reproduces.
+
+  The URL itself is long and percent-encoded; what someone wants to know before
+  sending it is which view they are handing over.
+  """
+  def share_summary(assigns) do
+    parts =
+      [
+        projection_name(assigns.projections, assigns.projection),
+        assigns.selected && Event.title(assigns.selected),
+        assigns.entity && entity_label(assigns.read_model, assigns.entity),
+        assigns.source_filter != [] && "#{length(assigns.source_filter)} source(s)",
+        (assigns.range_from || assigns.range_to) && "a time range"
+      ]
+      |> Enum.filter(&is_binary/1)
+
+    Enum.join(parts, " · ")
+  end
+
+  @doc "schema.org type for an entity in the read model, or nil."
+  def entity_schema_type(read_model, ref) do
+    case read_model.entities[ref] do
+      %{kind: kind} -> Glossary.schema_type(kind)
+      _ -> nil
+    end
+  end
+
+  @doc "Full reference plus type, for an entity chip's title."
+  def entity_title(read_model, ref) do
+    case entity_schema_type(read_model, ref) do
+      nil -> ref
+      type -> "#{ref} · schema.org/#{type}"
+    end
+  end
+
+  @doc """
+  Shortens a long opaque identifier for display: first and last characters
+  with an ellipsis between.
+
+  A 64-character hash rendered in full dominates a card and is read by nobody;
+  the head and tail are what a person actually compares, and the full value
+  stays available as a title attribute and to copy.
+  """
+  def abbrev(value, keep \\ 8)
+
+  def abbrev(value, keep) when is_binary(value) do
+    if String.length(value) > keep * 2 + 3 do
+      String.slice(value, 0, keep) <> "…" <> String.slice(value, -keep, keep)
+    else
+      value
+    end
+  end
+
+  def abbrev(value, _keep), do: to_string(value)
+
+  @doc """
+  Splits a namespaced identifier into its segments for display.
+
+  `civic:eltsp:entity:goal-quality-of-life` is already a typed reference — a
+  scheme, a stream, a kind and a name. Showing the parts makes that structure
+  visible instead of leaving it as one opaque string.
+  """
+  def id_segments(id) when is_binary(id), do: String.split(id, ":")
+  def id_segments(_), do: []
+
+  @doc "Whether a provenance value should render as a link."
+  def link?(value) when is_binary(value), do: String.starts_with?(value, ["http://", "https://"])
+  def link?(_), do: false
+
+  @doc """
+  Orders provenance keys so the resolvable ones lead.
+
+  A URI is where to look and a hash is what must be there; the rest is
+  qualifying detail.
+  """
+  def provenance_order(provenance) do
+    priority = %{"uri" => 0, "content_hash" => 1, "txid" => 2}
+
+    provenance
+    |> Enum.sort_by(fn {k, _} -> {Map.get(priority, k, 9), k} end)
+  end
+
+  @doc "Quarterly tick marks for the timeline band."
+  def timeline_ticks(timeline), do: Timeline.ticks(timeline)
+
+  @doc "The glossary entry for a slug, or nil."
+  def glossary_term(slug), do: Glossary.get(slug)
 
   @doc "One-line meaning of a truth state, for the legend."
   def truth_description(state), do: Map.get(@truth_descriptions, state, "")

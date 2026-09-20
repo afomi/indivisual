@@ -57,6 +57,15 @@ config :indivisual, Oban,
   repo: Indivisual.Repo,
   queues: [embeddings: 2]
 
+# Contextual explanation of one event — local Ollama by default.
+# Static vocabulary lives in Indivisual.Atlas.Glossary; this covers only the
+# part a lookup table cannot answer. Disabled means the UI simply does not
+# offer it, never that a page fails.
+config :indivisual, Indivisual.Explain,
+  adapter: Indivisual.Explain.Ollama,
+  url: "http://localhost:11434",
+  model: "qwen3:8b"
+
 # Text embeddings (semantic axes) — local Ollama by default.
 # The app degrades gracefully (embedding features report unavailable) when
 # Ollama is not running. Axes record the model they were computed with, so

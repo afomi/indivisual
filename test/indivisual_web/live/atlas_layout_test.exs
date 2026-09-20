@@ -13,20 +13,19 @@ defmodule IndivisualWeb.AtlasLayoutTest do
     assert at(html, "atlas-source-nav") < at(html, "atlas-timeline")
   end
 
-  test "columns render left-to-right: legend+activity, reader, canvas", %{conn: conn} do
+  test "columns render left-to-right: reader, activity, canvas", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/atlas")
 
-    assert at(html, "atlas-timeline") < at(html, "atlas-rail"),
+    assert at(html, "atlas-timeline") < at(html, "atlas-reader"),
            "the timeline is full-width, above the columns"
 
-    assert at(html, "atlas-rail") < at(html, "atlas-activity"),
-           "legend should precede activity (same column)"
+    # The selected event sits left of the log it was chosen from: you read the
+    # record, and the list is the index beside it.
+    assert at(html, "atlas-reader") < at(html, "atlas-activity"),
+           "the event detail should precede the activity log"
 
-    assert at(html, "atlas-activity") < at(html, "atlas-reader"),
-           "activity column should precede the reader"
-
-    assert at(html, "atlas-reader") < at(html, "atlas-canvas"),
-           "reader should precede the canvas"
+    assert at(html, "atlas-activity") < at(html, "atlas-canvas"),
+           "activity should precede the canvas"
   end
 
   test "sources are toggles, not a radio group — many can be active", %{conn: conn} do
