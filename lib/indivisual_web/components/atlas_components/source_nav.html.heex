@@ -1,0 +1,50 @@
+<%!-- Sources get the same treatment as projections: a full-width row of
+options, each naming what it is and who publishes it. Unlike projections these
+are NOT mutually exclusive — any combination of sources can be shown — so they
+are toggle buttons with aria-pressed rather than a radio group. Same visual
+grammar, honest semantics. --%>
+<nav
+  id={@id}
+  class="atlas-projnav"
+  aria-label="Sources"
+>
+  <div class="atlas-projnav__row atlas-sourcenav__row">
+    <%= for {id, source} <- Enum.sort_by(@sources, fn {_, s} -> s.title end) do %>
+      <button
+        type="button"
+        phx-click="toggle_source"
+        phx-value-id={id}
+        aria-pressed={to_string(id in @source_filter)}
+        class={[
+          "atlas-projnav__option atlas-sourcenav__option",
+          id in @source_filter && "is-active"
+        ]}
+      >
+        <span class="atlas-projnav__name">
+          {source.title}
+        </span>
+        <span class="atlas-projnav__question">
+          {source[:publisher] || "—"}
+        </span>
+        <span class="atlas-sourcenav__meta">
+          {source.status} · adapter: {source.adapter.status}
+        </span>
+      </button>
+    <% end %>
+  </div>
+
+  <p class="atlas-sourcenav__readout">
+    <%= if @source_filter == [] do %>
+      All sources shown.
+    <% else %>
+      Filtering to {length(@source_filter)} of {map_size(@sources)} sources.
+      <button
+        type="button"
+        phx-click="clear_sources"
+        class="atlas-sourcenav__clear"
+      >
+        Show all
+      </button>
+    <% end %>
+  </p>
+</nav>

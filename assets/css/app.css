@@ -11,6 +11,9 @@
 
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/indivisual/colocated.css";
+/* Vendored (assets/vendor/leaflet) rather than a CDN: no external request, and
+   the tile layer is the only thing that reaches the network. */
+@import "../vendor/leaflet/leaflet.css";
 @source "../css";
 @source "../js";
 @source "../../lib/indivisual_web";
@@ -206,6 +209,25 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    that leaves ragged half-width text in a column that is already narrow. */
 .atlas p { max-width: none; }
 
+/* ── atlas sticky controls ─────────────────────────────────────────────── */
+/* Projection row + timeline + scrubber stay in view while the columns scroll.
+   Withheld where it would cost more than it gives: on stacked (narrow) layouts
+   and short viewports the block would cover most of the screen, so there it
+   scrolls away like anything else. Collapsing the timeline or scrubber shrinks
+   the stuck block, which is the reader's own control over its height. */
+.atlas-controls {
+  background: var(--paper);
+}
+
+@media (min-width: 1024px) and (min-height: 720px) {
+  .atlas-controls {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    box-shadow: 0 1px 0 var(--rule), 0 6px 12px -10px rgb(0 0 0 / 0.35);
+  }
+}
+
 /* ── atlas projection selector ─────────────────────────────────────────── */
 /* Four mutually exclusive projections as a radio row. The real inputs are
    visually hidden but still focusable, so the label carries the appearance
@@ -218,7 +240,6 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   padding: 0.5rem var(--gutter) 0;
 }
 
-/* The radio row takes the space; the legend button stays its own width. */
 .atlas-projnav > .atlas-projnav__row { flex: 1; }
 
 .atlas-projnav__row {
@@ -330,6 +351,59 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 .atlas-explain { margin-top: var(--baseline); }
 
 .atlas-explain__button { font-size: 12px; }
+
+/* Three lines of shimmer where the answer will appear. A skeleton beats a
+   spinner here: it reserves the right amount of space so the card does not
+   jump when text arrives, and it shows the shape of what is coming. */
+.atlas-explain__loading {
+  display: grid;
+  gap: 0.3rem;
+  border-left: 3px solid var(--rule);
+  padding-left: 0.625rem;
+}
+
+.atlas-explain__skeleton {
+  display: block;
+  height: 0.7rem;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--rule) 0%,
+    var(--paper) 40%,
+    var(--rule) 80%
+  );
+  background-size: 300% 100%;
+  animation: atlas-shimmer 1.6s ease-in-out infinite;
+}
+
+/* The last line stops short, the way a final sentence does. */
+.atlas-explain__skeleton.is-short { width: 55%; }
+
+.atlas-explain__skeleton:nth-child(3) { animation-delay: 0.15s; }
+.atlas-explain__skeleton:nth-child(4) { animation-delay: 0.3s; }
+
+@keyframes atlas-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Motion is a nicety; the layout must still read without it. */
+@media (prefers-reduced-motion: reduce) {
+  .atlas-explain__skeleton {
+    animation: none;
+    background: var(--rule);
+  }
+}
+
+.atlas-explain__loading-note {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin: 0.125rem 0 0;
+  max-width: none;
+}
+
+/* A slow wait needs an exit, not just a reassurance. */
+.atlas-explain__loading-note .atlas-term { font-size: 11px; }
 
 .atlas-explain__status {
   font-size: 12px;
@@ -458,8 +532,13 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    left — which is backwards, since the value is the content. Stacked, every
    value gets the full column and can be set at a readable size. */
 
+/* `minmax(0, 1fr)`, here and on the provenance grids below: an implicit grid
+   track is as wide as its widest unbreakable string, so one long id or URL
+   would push the record past its column. A zero minimum keeps the track at the
+   column's width and leaves the wrapping to the value. */
 .atlas-fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   margin: var(--baseline) 0 0;
 }
@@ -475,6 +554,8 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   margin: 0.05rem 0 0;
   font-size: 12px;
   line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* The glossary button inherits the label's treatment rather than looking like
@@ -499,11 +580,14 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   margin: 0;
   padding: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 
 .atlas-prov__row {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 0.05rem;
   padding-left: 0.5rem;
   border-left: 2px solid var(--rule);
@@ -521,7 +605,7 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 .atlas-prov__link {
   font-size: 12px;
   line-height: 1.35;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .atlas-prov__path { color: var(--ink-soft); }
@@ -529,6 +613,8 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 /* Monospace at a readable size: a digest is compared character by character,
    which is the one thing small type makes impossible. */
 .atlas-prov__digest {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   color: var(--ink);
@@ -538,9 +624,11 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   justify-self: start;
 }
 
+/* Ids and refs have no spaces to break at, so they may break anywhere. */
 .atlas-prov__value {
   font-size: 12px;
   color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
 /* ── entity chips ─────────────────────────────────────────────────────── */
@@ -775,77 +863,89 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 }
 
 /* ── atlas map ────────────────────────────────────────────────────────── */
-/* Pins sit at real relative positions within the bounds of whatever is
-   located. This is a plane, not a basemap: there is no tile layer, so the grid
-   is a reference for relative position rather than a claim about terrain. */
+/* Leaflet over OpenStreetMap tiles. Markers are divIcons so they inherit the
+   page's type and need no image assets — a marker is a dot with its name
+   beside it, the same treatment entity chips get elsewhere. */
 
 .atlas-map {
-  position: relative;
+  /* Leaflet's panes run to z-index 1000. Without its own stacking context the
+     map would paint over the sticky controls and the modals. */
+  isolation: isolate;
   width: 100%;
   aspect-ratio: 3 / 2;
   border: 1px solid var(--rule);
   margin-bottom: 0.25rem;
 }
 
-.atlas-map__plane {
-  position: absolute;
-  inset: 0;
+/* The graph gets the same frame as the map: the column around them is
+   unframed, so each instrument carries its own edge. */
+.atlas-graph {
+  border: 1px solid var(--rule);
+  margin-top: 0.75rem;
+}
+
+.atlas-map__canvas {
   width: 100%;
   height: 100%;
-}
-
-.atlas-map__grid {
-  stroke: var(--rule);
-  stroke-width: 0.25;
-  vector-effect: non-scaling-stroke;
-}
-
-.atlas-map__pin {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-  font-size: 11px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-/* The dot is the position; the label hangs off it. */
-.atlas-map__pin::before {
-  content: "";
-  flex: none;
-  width: 0.5rem;
-  height: 0.5rem;
-  border: 1px solid var(--ink);
   background: var(--paper);
 }
 
-.atlas-map__pin:hover {
-  background: transparent;
-  color: var(--link);
-  z-index: 2;
+/* Leaflet sets its own font and colors on controls and attribution. */
+.atlas-map__canvas,
+.atlas-map__canvas .leaflet-container {
+  font-family: inherit;
+  font-size: 12px;
 }
 
-.atlas-map__pin:hover::before { border-color: var(--link); }
-
-.atlas-map__pin.is-affected::before { background: var(--ink-soft); }
-
-.atlas-map__pin.is-focused {
-  font-weight: 700;
-  z-index: 3;
+.leaflet-container .leaflet-control-attribution {
+  background: var(--paper);
+  color: var(--ink-faint);
+  font-size: 10px;
 }
 
-.atlas-map__pin.is-focused::before {
+.leaflet-container .leaflet-control-attribution a { color: var(--link); }
+
+/* divIcon markers: Leaflet positions the box; we draw inside it. */
+.atlas-pin {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  width: max-content !important;
+  height: auto !important;
+  /* The dot marks the coordinate, so shift the box to centre it there. */
+  transform: translate(-0.3rem, -0.3rem);
+}
+
+.atlas-pin__dot {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 2px var(--paper);
+}
+
+.atlas-pin__label {
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--paper);
+  padding: 0 0.2rem;
+  box-shadow: 0 0 0 1px var(--rule);
+}
+
+.atlas-pin.is-affected .atlas-pin__dot { background: var(--ink-soft); }
+
+.atlas-pin.is-focused .atlas-pin__dot {
   background: var(--link);
   border-color: var(--link);
 }
 
-.atlas-map__label { color: inherit; }
+.atlas-pin.is-focused .atlas-pin__label {
+  font-weight: 700;
+  box-shadow: 0 0 0 1px var(--link);
+}
 
 .atlas-map__caption {
   font-size: 11px;
@@ -863,31 +963,66 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    stating its state as a line of text, in the same register as the projection
    and source rows above — the information stays, only the controls fold. */
 
-.atlas-collapse {
+/* ── atlas accordion ───────────────────────────────────────────────────── */
+/* A collapsible panel that reads as one object: a rule down its left edge ties
+   the header to its body, so where a panel starts and stops is visible without
+   a box around it. The header stays when the body folds. */
+
+.atlas-accordion {
+  border-left: 3px solid var(--rule);
+  padding-left: 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.atlas-accordion.is-open { border-left-color: var(--ink-soft); }
+
+.atlas-accordion__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+/* A real target, not a 10px glyph: the caret is the panel's one control. */
+.atlas-accordion__toggle {
   flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-left: -0.25rem;
   border: 0;
-  padding: 0 0.25rem 0 0;
+  padding: 0;
   background: transparent;
-  font-size: 10px;
-  line-height: 1;
   color: var(--ink-soft);
   cursor: pointer;
 }
 
-.atlas-collapse:hover { background: transparent; color: var(--ink); }
+.atlas-accordion__toggle:hover { background: transparent; color: var(--ink); }
 
-.atlas-collapsed {
-  margin: 0;
+/* One triangle, turned — so open and closed are the same mark in two states. */
+.atlas-accordion__caret {
+  width: 0;
+  height: 0;
+  border-block: 6px solid transparent;
+  border-left: 9px solid currentColor;
+  transition: transform 120ms ease;
+}
+
+.atlas-accordion__toggle[aria-expanded="true"] .atlas-accordion__caret { transform: rotate(90deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-accordion__caret { transition: none; }
+}
+
+.atlas-accordion__title {
   font-size: 13px;
-  color: var(--ink-soft);
-  max-width: none;
+  font-weight: 700;
+  margin: 0;
 }
 
-.atlas-timeline__scrub-head {
-  display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
-}
+.atlas-accordion__body[hidden] { display: none; }
 
 /* ── atlas timeline marks ──────────────────────────────────────────────── */
 /* Real time horizontally; simultaneity stacked vertically. The stacking is not
@@ -967,9 +1102,28 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   margin-bottom: 0.5rem;
 }
 
+/* The global h2 carries `margin-top: calc(var(--baseline) * 2)` — 3rem — which
+   is right for a heading that breaks up running prose and wrong for one that
+   labels a panel already positioned by the grid. Panel headings start at their
+   container's top edge. */
+.atlas-activity__head h2,
+.atlas-timeline__title,
+.atlas-modal__title,
+.atlas-share__title,
+#atlas-canvas-title {
+  margin-top: 0;
+}
+
 /* ── atlas legend modal ────────────────────────────────────────────────── */
 /* Truth states are reference: read once, then in the way. They live behind an
    info button rather than holding a permanent column. */
+
+/* The key to the truth-state chips, right-aligned above the rows that carry them. */
+.atlas-activity__key {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0.5rem 0 0.25rem;
+}
 
 .atlas-legend-button {
   font-size: 12px;
@@ -1071,19 +1225,6 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   gap: 0.5rem;
 }
 
-.atlas-timeline__bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem 1rem;
-}
-
-.atlas-timeline__title {
-  font-size: 13px;
-  font-weight: 700;
-  margin: 0;
-}
-
 .atlas-timeline__toggle {
   display: inline-flex;
   align-items: center;
@@ -1112,15 +1253,196 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 
 .atlas-timeline__actions button { font-size: 12px; padding: 0.125rem 0.5rem; }
 
-/* The two dials stack so each stays full width and grabbable at any size —
-   a dual-thumb single track needs JS, and two honest inputs keep this
-   keyboard-accessible with no hook. */
-.atlas-timeline__range {
+/* One bar, two handles, no hook. Both native range inputs are laid over a
+   single drawn track; the inputs themselves ignore the pointer and only their
+   thumbs take it, so either handle can be grabbed and the keyboard behaviour
+   is the browser's own. The filled span is drawn from --from / --to (0–1),
+   corrected for thumb width so the fill meets the handle's centre. */
+.atlas-range {
+  /* On the wrapper, not the bar: the per-source lanes share them so their dots
+     line up under the bar's. */
+  --thumb-w: 0.75rem;
+  --thumb-h: 1.25rem;
   display: grid;
-  gap: 0.25rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0 0.75rem;
 }
 
-.atlas-timeline__range.is-disabled { opacity: 0.4; }
+.atlas-range.is-disabled { opacity: 0.4; }
+
+.atlas-range__bar {
+  --a: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--from));
+  --b: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--to));
+  position: relative;
+  height: 1.5rem;
+}
+
+.atlas-range__track {
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 4px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    to right,
+    var(--rule) var(--a),
+    var(--ink) var(--a),
+    var(--ink) var(--b),
+    var(--rule) var(--b)
+  );
+}
+
+/* Out of range: the same window, inked on the outside. */
+.atlas-range__bar.is-outside .atlas-range__track {
+  background: linear-gradient(
+    to right,
+    var(--ink) var(--a),
+    var(--rule) var(--a),
+    var(--rule) var(--b),
+    var(--ink) var(--b)
+  );
+}
+
+/* One dot per activity, on the line. Same thumb-width correction as the fill,
+   so a handle dragged to an event sits exactly over that event's dot. Dots
+   never take the pointer — the handles above them do. Read events are inked;
+   the rest are hollow, so the window is legible from the dots alone. */
+.atlas-range__dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.atlas-range__dot {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--x));
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--ink-faint);
+  border-radius: 50%;
+  background: var(--paper);
+  transform: translate(-50%, -50%);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.atlas-range__dot.is-read {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+/* A packed dot stands for a run of events and says how many. */
+.atlas-range__dot.is-packed {
+  display: grid;
+  place-items: center;
+  width: auto;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  font-size: 9px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+.atlas-range__dot.is-packed.is-read { color: var(--paper); }
+
+/* Where the Position slider currently stands. */
+.atlas-range__dot.is-selected {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--link);
+}
+
+/* ── per-source lanes ── */
+/* The bar, fanned out. Lanes sit in the bar's own grid column so they are
+   exactly its width; nothing else is needed to keep the axes aligned. */
+.atlas-range__fan {
+  font-size: 12px;
+  padding: 0.125rem 0.5rem;
+  white-space: nowrap;
+}
+
+.atlas-range__lanes {
+  grid-column: 1;
+  list-style: none;
+  margin: 0.125rem 0 0.25rem;
+  padding: 0;
+  animation: atlas-lanes-in 160ms ease-out;
+}
+
+@keyframes atlas-lanes-in {
+  from { opacity: 0; transform: translateY(-0.25rem); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-range__lanes { animation: none; }
+}
+
+.atlas-range__lane { margin: 0; }
+
+.atlas-range__lane-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+.atlas-range__lane-n {
+  margin-left: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-range__lane-line {
+  position: relative;
+  display: block;
+  height: 1rem;
+}
+
+.atlas-range__lane-line::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid var(--rule);
+}
+
+.atlas-range__mode { display: flex; }
+
+.atlas-range__mode button {
+  font-size: 12px;
+  padding: 0.125rem 0.5rem;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.atlas-range__mode button + button { border-left: 0; }
+
+.atlas-range__mode button[aria-checked="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.atlas-range__mode button:disabled {
+  cursor: default;
+  color: var(--ink-faint);
+  border-color: var(--rule);
+  background: transparent;
+}
+
+@media (max-width: 40rem) {
+  .atlas-range { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+}
+
+.atlas-range__fan:disabled {
+  cursor: default;
+  color: var(--ink-faint);
+  border-color: var(--rule);
+  background: transparent;
+}
 
 .atlas-timeline input[type="range"] {
   width: 100%;
@@ -1129,18 +1451,62 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   height: 1.5rem;
 }
 
+.atlas-range__bar input[type="range"] {
+  position: absolute;
+  inset: 50% 0 auto;
+  height: var(--thumb-h);
+  transform: translateY(-50%);
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.atlas-range__bar input[type="range"]::-webkit-slider-runnable-track {
+  height: var(--thumb-h);
+  background: transparent;
+}
+
+.atlas-range__bar input[type="range"]::-moz-range-track { background: transparent; }
+
+.atlas-range__bar input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: var(--thumb-w);
+  height: var(--thumb-h);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  cursor: ew-resize;
+  transition: background-color 120ms ease;
+}
+
+.atlas-range__bar input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: var(--thumb-w);
+  height: var(--thumb-h);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  cursor: ew-resize;
+  transition: background-color 120ms ease;
+}
+
+.atlas-range__bar input[type="range"]:hover::-webkit-slider-thumb,
+.atlas-range__bar input[type="range"]:focus-visible::-webkit-slider-thumb { background: var(--ink); }
+
+.atlas-range__bar input[type="range"]:hover::-moz-range-thumb,
+.atlas-range__bar input[type="range"]:focus-visible::-moz-range-thumb { background: var(--ink); }
+
+.atlas-range__bar input[type="range"]:focus-visible { outline: none; }
+
+.atlas-range__bar input[type="range"]:disabled::-webkit-slider-thumb { cursor: default; }
+.atlas-range__bar input[type="range"]:disabled::-moz-range-thumb { cursor: default; }
+
 .atlas-timeline__scrub {
   display: grid;
   gap: 0.125rem;
-  border-top: 1px solid var(--rule);
-  padding-top: 0.5rem;
-}
-
-.atlas-timeline__position {
-  font-size: 12px;
-  color: var(--ink-soft);
-  margin: 0;
-  max-width: none;
 }
 
 @media (max-width: 40rem) {
@@ -1203,4 +1569,86 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 .atlas-sourcenav__clear:hover {
   background: none;
   color: var(--link);
+}
+
+/* ── Activity source checklist ──────────────────────────────────────────── */
+/* The compact copy of the source filter, on the list it filters. One line per
+   source: box, title, count. Titles truncate rather than wrap — the full row
+   above is where a source is described; this is only where it is switched. */
+
+.atlas-srcfilter {
+  margin-bottom: 0.625rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+}
+
+.atlas-srcfilter__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 0 0 0.25rem;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.atlas-srcfilter__count { font-variant-numeric: tabular-nums; }
+
+.atlas-srcfilter__head .atlas-sourcenav__clear {
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.atlas-srcfilter__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.125rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.atlas-srcfilter__item:hover {
+  background: transparent;
+  color: var(--ink);
+}
+
+.atlas-srcfilter__item[aria-checked="true"] { color: var(--ink); }
+.atlas-srcfilter__item[aria-disabled="true"] { cursor: default; }
+
+.atlas-srcfilter__box {
+  width: 0.6875rem;
+  height: 0.6875rem;
+  border: 1px solid currentColor;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.atlas-srcfilter__item[aria-checked="true"] .atlas-srcfilter__box {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--paper);
+}
+
+.atlas-srcfilter__item[aria-disabled="true"] .atlas-srcfilter__box { opacity: 0.45; }
+
+.atlas-srcfilter__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-srcfilter__n {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
 }

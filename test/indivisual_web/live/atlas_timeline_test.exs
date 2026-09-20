@@ -20,19 +20,21 @@ defmodule IndivisualWeb.AtlasTimelineTest do
       assert has_element?(view, "#atlas-timeline")
       assert has_element?(view, "#atlas-timeline-all")
       assert has_element?(view, "#atlas-timeline-range")
-      assert has_element?(view, "#atlas-scrubber")
 
       # It precedes the three-column grid rather than sitting in the right rail.
       assert html =~ ~r/id="atlas-timeline".*lg:grid-cols-/s
       refute html =~ ~r/id="atlas-reader".*id="atlas-timeline"/s
     end
 
-    test "holds both controls: a toggle and two range dials", %{conn: conn} do
+    test "holds a toggle and ONE range bar with two handles", %{conn: conn} do
       {:ok, view, _} = live(conn, ~p"/atlas")
 
       assert has_element?(view, "#atlas-timeline-all input[type=checkbox]")
-      assert has_element?(view, "#atlas-timeline-from[type=range]")
-      assert has_element?(view, "#atlas-timeline-to[type=range]")
+
+      # Both handles live in the same bar, over one drawn track.
+      assert has_element?(view, "#atlas-timeline-range.atlas-range__bar .atlas-range__track")
+      assert has_element?(view, "#atlas-timeline-range #atlas-timeline-from[type=range]")
+      assert has_element?(view, "#atlas-timeline-range #atlas-timeline-to[type=range]")
     end
   end
 
@@ -105,9 +107,42 @@ defmodule IndivisualWeb.AtlasTimelineTest do
       {:ok, view, _} = live(conn, ~p"/atlas")
       total = total_events()
 
-      view |> form("#atlas-timeline-range", %{"from" => "0", "to" => "99999"}) |> render_change()
+      view
+      |> form("#atlas-timeline-range", %{"from" => "99999", "to" => "99999"})
+      |> render_change()
 
-      assert assert_patch(view) =~ "to=#{total - 1}"
+      # Clamped to the last event; the end handle there is open (see below).
+      path = assert_patch(view)
+      assert path =~ "from=#{total - 1}"
+      refute path =~ "to="
+    end
+
+    test "a handle resting on an end of the bar is an open bound", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?from=1&to=2")
+      total = total_events()
+
+      # "To the last event" would silently exclude whatever arrives next;
+      # a handle at the far right means "to the present".
+      view
+      |> form("#atlas-timeline-range", %{"from" => "0", "to" => "#{total - 1}"})
+      |> render_change()
+
+      path = assert_patch(view)
+      refute path =~ "from="
+      refute path =~ "to="
+      assert render(view) =~ "full range"
+    end
+
+    test "open handles rest on the ends of the bar", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas")
+
+      assert has_element?(
+               view,
+               ~s(#atlas-timeline-range[style*="--from: 0.0"][style*="--to: 1.0"])
+             )
+
+      assert has_element?(view, ~s(#atlas-timeline-from[aria-valuetext="from the start"]))
+      assert has_element?(view, ~s(#atlas-timeline-to[aria-valuetext="to the present"]))
     end
 
     test "the range round-trips through the URL", %{conn: conn} do
@@ -134,13 +169,150 @@ defmodule IndivisualWeb.AtlasTimelineTest do
     end
   end
 
-  describe "scrubbing within the range" do
-    test "the scrubber still selects an event", %{conn: conn} do
+  describe "in range / out of range" do
+    test "out of range shows the complement of the window", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?from=1&to=2")
+      total = total_events()
+
+      assert render(view) =~ "Showing 2 of #{total}"
+
+      view |> element("#atlas-timeline-mode-out") |> render_click()
+
+      assert assert_patch(view) =~ "out=1"
+      assert render(view) =~ "Showing #{total - 2} of #{total}"
+      assert has_element?(view, ~s(#atlas-timeline-mode-out[aria-checked="true"]))
+      assert has_element?(view, "#atlas-timeline-range.is-outside")
+    end
+
+    test "works against an open bound", %{conn: conn} do
+      total = total_events()
+      {:ok, view, _} = live(conn, ~p"/atlas?from=2&out=1")
+
+      # Outside "event 2 → now" is just the two events before it.
+      assert render(view) =~ "Showing 2 of #{total}"
+    end
+
+    test "in range switches back", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?from=1&to=2&out=1")
+
+      view |> element("#atlas-timeline-mode-in") |> render_click()
+
+      refute assert_patch(view) =~ "out="
+    end
+
+    test "with no window there is no outside: the switch is off", %{conn: conn} do
+      total = total_events()
+      {:ok, view, _} = live(conn, ~p"/atlas?out=1")
+
+      assert has_element?(view, "#atlas-timeline-mode-out[disabled]")
+      # A stray out=1 must not empty the page.
+      assert render(view) =~ "Showing #{total} of #{total}"
+    end
+
+    test "clearing the range drops the mode with it", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?from=1&to=2&out=1")
+
+      view |> element("#atlas-timeline-clear") |> render_click()
+
+      path = assert_patch(view)
+      refute path =~ "out="
+      refute path =~ "from="
+    end
+
+    test "dragging both handles to the ends drops the mode too", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?from=1&to=2&out=1")
+      total = total_events()
+
+      view
+      |> form("#atlas-timeline-range", %{"from" => "0", "to" => "#{total - 1}"})
+      |> render_change()
+
+      refute assert_patch(view) =~ "out="
+    end
+  end
+
+  describe "activity dots on the range bar" do
+    defp dots(view, selector) do
+      view |> render() |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> Enum.count()
+    end
+
+    test "every activity is a dot on the line", %{conn: conn} do
       {:ok, view, _} = live(conn, ~p"/atlas")
 
-      view |> form("#atlas-scrubber", %{"index" => "0"}) |> render_change()
+      assert dots(view, "#atlas-timeline-range #atlas-timeline-dots .atlas-range__dot") ==
+               total_events()
+    end
 
-      assert assert_patch(view) =~ "event="
+    test "dots outside the window stay on the line, unread", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?from=1&to=2")
+      total = total_events()
+
+      assert dots(view, "#atlas-timeline-dots .atlas-range__dot") == total
+      assert dots(view, "#atlas-timeline-dots .atlas-range__dot.is-read") == 2
+    end
+
+    test "out of range flips which dots are read", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?from=1&to=2&out=1")
+
+      assert dots(view, "#atlas-timeline-dots .atlas-range__dot.is-read") == total_events() - 2
+    end
+
+    test "the selected event is marked, and the dots do not select", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas")
+
+      assert dots(view, "#atlas-timeline-dots .atlas-range__dot.is-selected") == 1
+      # Display only: the activity list, marks band and Prev / Next select.
+      refute has_element?(view, "#atlas-timeline-dots [phx-click]")
+    end
+  end
+
+  describe "fanning the bar out by source" do
+    test "starts as one bar", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas")
+
+      assert has_element?(view, ~s(#atlas-timeline-lanes-toggle[aria-expanded="false"]))
+      refute has_element?(view, "#atlas-timeline-lanes")
+    end
+
+    test "expands into one lane per source, and the dots move into them", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas")
+
+      view |> element("#atlas-timeline-lanes-toggle") |> render_click()
+
+      assert assert_patch(view) =~ "lanes=1"
+
+      assert dots(view, "#atlas-timeline-lanes .atlas-range__lane") ==
+               map_size(Feed.sources(Feed))
+
+      # Each activity is drawn once: in a lane, no longer on the single bar.
+      assert dots(view, "#atlas-timeline-lanes .atlas-range__dot") == total_events()
+      refute has_element?(view, "#atlas-timeline-dots")
+
+      # The handles stay on the one bar.
+      assert has_element?(view, "#atlas-timeline-from")
+    end
+
+    test "collapses back into the single bar", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?lanes=1")
+
+      view |> element("#atlas-timeline-lanes-toggle") |> render_click()
+
+      refute assert_patch(view) =~ "lanes="
+      assert dots(view, "#atlas-timeline-dots .atlas-range__dot") == total_events()
+    end
+
+    test "only the sources feeding the view get a lane", %{conn: conn} do
+      [only | _] = Feed.sources(Feed) |> Map.keys() |> Enum.sort()
+      {:ok, view, _} = live(conn, ~p"/atlas?lanes=1&sources=#{only}")
+
+      assert dots(view, "#atlas-timeline-lanes .atlas-range__lane") == 1
+      assert has_element?(view, "#atlas-timeline-lane-#{only}")
+    end
+
+    test "lanes respect the window like the single bar does", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?lanes=1&from=1&to=2")
+
+      assert dots(view, "#atlas-timeline-lanes .atlas-range__dot.is-read") == 2
     end
   end
 end

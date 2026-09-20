@@ -27,7 +27,7 @@ defmodule Indivisual.Atlas.CoherenceTest do
       assert link.label =~ "→"
       assert link.from.label
       assert link.to.label
-      assert link.relationship.verb
+      assert link.relationship.relationship
     end
   end
 

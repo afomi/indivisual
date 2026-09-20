@@ -1,0 +1,42 @@
+<section
+  id={@id}
+  class={["atlas-accordion", @open? && "is-open"]}
+  aria-labelledby={"#{@id}-title"}
+>
+  <header class="atlas-accordion__head">
+    <button
+      type="button"
+      id={@toggle_id}
+      phx-click={@toggle}
+      class="atlas-accordion__toggle"
+      aria-expanded={to_string(@open?)}
+      aria-controls={@body_id}
+      title={accordion_action(@open?, @label || @title)}
+    >
+      <span
+        class="atlas-accordion__caret"
+        aria-hidden="true"
+      ></span>
+      <span class="sr-only">
+        {accordion_action(@open?, @label || @title)}
+      </span>
+    </button>
+
+    <h2
+      id={"#{@id}-title"}
+      class="atlas-accordion__title"
+    >
+      {@title}
+    </h2>
+
+    {render_slot(@head)}
+  </header>
+
+  <div
+    id={@body_id}
+    class="atlas-accordion__body"
+    hidden={not @open?}
+  >
+    {render_slot(@inner_block)}
+  </div>
+</section>

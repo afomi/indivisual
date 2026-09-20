@@ -4,7 +4,7 @@ defmodule IndivisualWeb.AtlasLive do
 
   Three regions: a projection rail (projections, source filters, truth legend), an
   Atlas canvas (server-rendered SVG topology of entities and relationships), and a
-  context reader with a timeline scrubber, selected-event details, provenance, and an
+  context reader with a timeline range bar, selected-event details, provenance, and an
   annotation form.
 
   URL state carries `projection`, `event`, `entity`, and `sources` so a specific
@@ -24,6 +24,7 @@ defmodule IndivisualWeb.AtlasLive do
   alias Indivisual.Atlas.Geo
   alias Indivisual.Atlas.Timeline
   alias Indivisual.Atlas.Topology
+  alias IndivisualWeb.AtlasComponents
 
   @truth_glyphs %{
     "observed" => "●",
@@ -74,9 +75,11 @@ defmodule IndivisualWeb.AtlasLive do
      |> assign(:range_from, nil)
      |> assign(:range_to, nil)
      |> assign(:show_all, false)
+     |> assign(:range_outside?, false)
      |> assign(:all_events, [])
      |> assign(:show_legend, false)
-     |> assign(:marks?, false)
+     |> assign(:dense?, false)
+     |> assign(:lanes?, false)
      |> assign(:timeline_open?, true)
      |> assign(:scrubber_open?, true)
      |> assign(:timeline, Timeline.build([]))
@@ -108,7 +111,15 @@ defmodule IndivisualWeb.AtlasLive do
      |> assign(:range_from, parse_index(params["from"]))
      |> assign(:range_to, parse_index(params["to"]))
      |> assign(:show_all, params["all"] == "1")
-     |> assign(:marks?, params["marks"] == "1")
+     # With no window there is no outside, so a stray out=1 is dropped here
+     # rather than leaving the switch saying one thing and the page another.
+     |> assign(
+       :range_outside?,
+       params["out"] == "1" and
+         not (is_nil(parse_index(params["from"])) and is_nil(parse_index(params["to"])))
+     )
+     |> assign(:dense?, params["dense"] == "1")
+     |> assign(:lanes?, params["lanes"] == "1")
      |> assign(:timeline_open?, params["tl"] != "0")
      |> assign(:scrubber_open?, params["sc"] != "0")
      |> assign(:explain_event, nil)
@@ -162,7 +173,25 @@ defmodule IndivisualWeb.AtlasLive do
         pair -> pair
       end
 
-    {:noreply, patch(socket, from: from, to: to, event: nil)}
+    # A handle resting on the end of the bar is an OPEN bound, not index 0 or
+    # index N. The difference is live data: "to the last event I saw" silently
+    # excludes whatever arrives next, where "to the present" does not — and a
+    # handle at the far right plainly means the second.
+    from = if from == 0, do: nil, else: from
+    to = if to == total - 1, do: nil, else: to
+
+    # Outside-of-nothing is nothing, so the mode falls back with the bounds.
+    outside? = socket.assigns.range_outside? and not (is_nil(from) and is_nil(to))
+
+    {:noreply, patch(socket, from: from, to: to, out: outside?, event: nil)}
+  end
+
+  # The same window, read from the other side: what happened outside it.
+  def handle_event("range_mode", %{"mode" => mode}, socket) do
+    %{range_from: from, range_to: to} = socket.assigns
+    bounded? = not (is_nil(from) and is_nil(to))
+
+    {:noreply, patch(socket, out: mode == "out" and bounded?, event: nil)}
   end
 
   def handle_event("show_legend", _params, socket) do
@@ -223,8 +252,12 @@ defmodule IndivisualWeb.AtlasLive do
     {:noreply, patch(socket, sc: not socket.assigns.scrubber_open?)}
   end
 
-  def handle_event("toggle_marks", _params, socket) do
-    {:noreply, patch(socket, marks: not socket.assigns.marks?)}
+  def handle_event("toggle_lanes", _params, socket) do
+    {:noreply, patch(socket, lanes: not socket.assigns.lanes?)}
+  end
+
+  def handle_event("toggle_density", _params, socket) do
+    {:noreply, patch(socket, dense: not socket.assigns.dense?)}
   end
 
   def handle_event("toggle_all", _params, socket) do
@@ -233,12 +266,12 @@ defmodule IndivisualWeb.AtlasLive do
     else
       # "All" clears the window rather than remembering it: one visible control,
       # one meaning.
-      {:noreply, patch(socket, all: true, from: nil, to: nil, event: nil)}
+      {:noreply, patch(socket, all: true, from: nil, to: nil, out: false, event: nil)}
     end
   end
 
   def handle_event("clear_range", _params, socket) do
-    {:noreply, patch(socket, from: nil, to: nil, event: nil)}
+    {:noreply, patch(socket, from: nil, to: nil, out: false, event: nil)}
   end
 
   def handle_event("step", %{"dir" => dir}, socket) do
@@ -264,6 +297,26 @@ defmodule IndivisualWeb.AtlasLive do
 
   def handle_event("clear_sources", _params, socket) do
     {:noreply, patch(socket, sources: [])}
+  end
+
+  # The activity list's checklist. Same filter as `toggle_source`, opposite
+  # reading: there a pressed button narrows TO a source, here a checked box
+  # means a source is included — so unchecking from "all" leaves the rest.
+  def handle_event("check_source", %{"source" => id}, socket) do
+    %{sources: sources, source_filter: filter} = socket.assigns
+    shown = shown_sources(sources, filter)
+
+    next =
+      if id in shown, do: List.delete(shown, id), else: shown ++ [id]
+
+    cond do
+      not Map.has_key?(sources, id) -> {:noreply, socket}
+      # The last checked source stays on; an empty list would read as "nothing happened".
+      next == [] -> {:noreply, socket}
+      # Every source checked IS "no filter" — keep the URL clean.
+      length(next) == map_size(sources) -> {:noreply, patch(socket, sources: [])}
+      true -> {:noreply, patch(socket, sources: next)}
+    end
   end
 
   def handle_event("focus_entity", %{"ref" => ref}, socket) do
@@ -302,6 +355,13 @@ defmodule IndivisualWeb.AtlasLive do
              |> assign(:annotation_errors, errors)}
         end
     end
+  end
+
+  # Test-only: lets a test observe the loading state, which a fast adapter
+  # would otherwise skip straight past.
+  @impl true
+  def handle_info({:force_explain_loading, event_id}, socket) do
+    {:noreply, assign(socket, :explain_event, {event_id, :loading})}
   end
 
   # A stale result (the reader moved on) is dropped rather than shown against
@@ -349,10 +409,20 @@ defmodule IndivisualWeb.AtlasLive do
     # needs the full extent to draw against, so both are kept.
     all_events = Feed.events(Feed, sources: sources)
 
+    # Counted across the WHOLE feed, not the filtered one, so an unchecked
+    # source still says how much it would add.
+    unfiltered = if sources, do: Feed.events(Feed, sources: nil), else: all_events
+
     events =
       if socket.assigns.show_all,
         do: all_events,
-        else: slice_range(all_events, socket.assigns.range_from, socket.assigns.range_to)
+        else:
+          slice_range(
+            all_events,
+            socket.assigns.range_from,
+            socket.assigns.range_to,
+            socket.assigns.range_outside?
+          )
 
     selected =
       Enum.find(events, &(&1.event_id == requested)) || List.last(events)
@@ -370,8 +440,20 @@ defmodule IndivisualWeb.AtlasLive do
 
     socket
     |> assign(:all_events, all_events)
+    |> assign(:shown_sources, shown_sources(socket.assigns.sources, filter))
+    |> assign(:source_counts, Enum.frequencies_by(unfiltered, & &1.source_id))
     |> assign(:events, events)
     |> assign(:timeline, Timeline.build(events))
+    |> assign(
+      :range_dots,
+      range_dots(
+        all_events,
+        socket.assigns.range_from,
+        socket.assigns.range_to,
+        socket.assigns.range_outside?,
+        selected
+      )
+    )
     |> assign(:geo, Geo.project(read_model.entities))
     |> assign(:selected, selected)
     |> assign(:selected_index, selected_index)
@@ -417,7 +499,9 @@ defmodule IndivisualWeb.AtlasLive do
       from: socket.assigns[:range_from],
       to: socket.assigns[:range_to],
       all: socket.assigns[:show_all],
-      marks: socket.assigns[:marks?],
+      out: socket.assigns[:range_outside?],
+      dense: socket.assigns[:dense?],
+      lanes: socket.assigns[:lanes?],
       tl: socket.assigns[:timeline_open?],
       sc: socket.assigns[:scrubber_open?]
     }
@@ -447,17 +531,22 @@ defmodule IndivisualWeb.AtlasLive do
 
   # Either bound may be nil — that is what "open ended either way" means: a
   # nil start reads from the beginning, a nil end runs to the present.
-  defp slice_range(events, nil, nil), do: events
+  #
+  # `outside?` reads the same window from the other side. With no window there
+  # is no outside, so it is ignored rather than emptying the page.
+  defp slice_range(events, nil, nil, _outside?), do: events
 
-  defp slice_range(events, from, to) do
+  defp slice_range(events, from, to, outside?) do
     last = length(events) - 1
     first = from || 0
     final = to || last
 
-    if first > final or events == [] do
-      []
-    else
-      Enum.slice(events, first..final)
+    cond do
+      events == [] -> []
+      first > final and outside? -> events
+      first > final -> []
+      outside? -> Enum.slice(events, 0, first) ++ Enum.drop(events, final + 1)
+      true -> Enum.slice(events, first..final)
     end
   end
 
@@ -470,7 +559,9 @@ defmodule IndivisualWeb.AtlasLive do
       from: socket.assigns.range_from,
       to: socket.assigns.range_to,
       all: socket.assigns.show_all,
-      marks: socket.assigns.marks?,
+      out: socket.assigns.range_outside?,
+      dense: socket.assigns.dense?,
+      lanes: socket.assigns.lanes?,
       tl: socket.assigns.timeline_open?,
       sc: socket.assigns.scrubber_open?
     })
@@ -489,7 +580,9 @@ defmodule IndivisualWeb.AtlasLive do
       |> maybe_put(:from, opts[:from])
       |> maybe_put(:to, opts[:to])
       |> maybe_put(:all, if(opts[:all], do: "1", else: nil))
-      |> maybe_put(:marks, if(opts[:marks], do: "1", else: nil))
+      |> maybe_put(:out, if(opts[:out], do: "1", else: nil))
+      |> maybe_put(:dense, if(opts[:dense], do: "1", else: nil))
+      |> maybe_put(:lanes, if(opts[:lanes], do: "1", else: nil))
       # Only the non-default (collapsed) state needs to appear in the URL.
       |> maybe_put(:tl, if(Map.get(opts, :tl, true) == false, do: "0", else: nil))
       |> maybe_put(:sc, if(Map.get(opts, :sc, true) == false, do: "0", else: nil))
@@ -526,6 +619,13 @@ defmodule IndivisualWeb.AtlasLive do
       _ -> Topology.humanize(ref)
     end
   end
+
+  @doc """
+  Source ids currently feeding the view. An empty filter means no filter, so it
+  resolves to every source rather than none.
+  """
+  def shown_sources(sources, []), do: Map.keys(sources)
+  def shown_sources(_sources, filter), do: filter
 
   @doc "Source title for a source id."
   def source_title(sources, id) do
@@ -595,7 +695,8 @@ defmodule IndivisualWeb.AtlasLive do
         assigns.selected && Event.title(assigns.selected),
         assigns.entity && entity_label(assigns.read_model, assigns.entity),
         assigns.source_filter != [] && "#{length(assigns.source_filter)} source(s)",
-        (assigns.range_from || assigns.range_to) && "a time range"
+        (assigns.range_from || assigns.range_to) &&
+          if(assigns.range_outside?, do: "outside a time range", else: "a time range")
       ]
       |> Enum.filter(&is_binary/1)
 
@@ -617,6 +718,18 @@ defmodule IndivisualWeb.AtlasLive do
       type -> "#{ref} · schema.org/#{type}"
     end
   end
+
+  @doc """
+  Whether a provenance key holds an opaque digest, to be shown abbreviated.
+
+  By suffix rather than by list: an annotation carries `about_content_hash`, and a
+  chain source will bring its own, and each would otherwise render as 64
+  unbreakable characters.
+  """
+  def digest_key?(key) when is_binary(key),
+    do: key in ["txid", "hash"] or String.ends_with?(key, "_hash")
+
+  def digest_key?(_), do: false
 
   @doc """
   Shortens a long opaque identifier for display: first and last characters
@@ -665,6 +778,25 @@ defmodule IndivisualWeb.AtlasLive do
     |> Enum.sort_by(fn {k, _} -> {Map.get(priority, k, 9), k} end)
   end
 
+  @doc """
+  Map points as plain data for the Leaflet hook.
+
+  Only what the map needs crosses the boundary — a full entity would carry its
+  event ids and provenance into a data attribute for no purpose.
+  """
+  def map_points(geo, focused_ref, affected) do
+    Enum.map(geo.points, fn p ->
+      %{
+        ref: p.ref,
+        label: p.entity.label,
+        lat: p.lat,
+        lng: p.lng,
+        focused: p.ref == focused_ref,
+        affected: p.ref in affected
+      }
+    end)
+  end
+
   @doc "Quarterly tick marks for the timeline band."
   def timeline_ticks(timeline), do: Timeline.ticks(timeline)
 
@@ -704,6 +836,49 @@ defmodule IndivisualWeb.AtlasLive do
       is_nil(from) and is_nil(to) -> "full range"
       from == to -> index_label(events, from || last)
       true -> "#{start_text} → #{end_text}"
+    end
+  end
+
+  @doc """
+  The range bar's dots — combined (`:all`) and fanned out per source (`:lanes`)
+  — each marked with whether the current window reads it and whether it holds
+  the selected event. A packed dot counts as read if ANY of its events is: it
+  should not look empty while contributing rows.
+  """
+  def range_dots(events, from, to, outside?, selected) do
+    last = length(events) - 1
+    window = (from || 0)..(to || last)//1
+    selected_index = selected && Enum.find_index(events, &(&1.event_id == selected.event_id))
+
+    mark = fn dot ->
+      read? = Enum.any?(dot.indexes, &(&1 in window != outside?))
+
+      dot
+      |> Map.put(:read?, read?)
+      |> Map.put(:selected?, selected_index in dot.indexes)
+    end
+
+    %{
+      all: events |> Timeline.ordinal_dots() |> Enum.map(mark),
+      lanes:
+        events
+        |> Timeline.ordinal_lanes(& &1.source_id)
+        |> Map.new(fn {source_id, dots} -> {source_id, Enum.map(dots, mark)} end)
+    }
+  end
+
+  @doc """
+  Where a range handle sits along the bar, as a 0–1 fraction. An open bound
+  rests on its end of the bar, which is what makes "open" visible.
+  """
+  def range_fraction(events, index, open_at) do
+    last = length(events) - 1
+
+    cond do
+      last <= 0 -> if(open_at == :start, do: 0.0, else: 1.0)
+      is_nil(index) and open_at == :start -> 0.0
+      is_nil(index) -> 1.0
+      true -> Float.round(min(index, last) / last, 4)
     end
   end
 

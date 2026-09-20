@@ -2,7 +2,7 @@ defmodule Indivisual.Atlas.Feed do
   @moduledoc """
   The live, in-process Atlas event feed.
 
-  Holds the canonical `Indivisual.Atlas.Stream`, loaded on start from the configured
+  Holds the canonical `Indivisual.Atlas.Log`, loaded on start from the configured
   source adapters, and broadcasts every accepted append over `Indivisual.PubSub` on
   `"atlas:feed"` so live readers update without resetting their state.
 
@@ -12,7 +12,7 @@ defmodule Indivisual.Atlas.Feed do
         sources: [Indivisual.Atlas.Sources.CivicFixture, Indivisual.Atlas.Sources.Annotations]
 
   Persistence: every accepted append is written to `Indivisual.Atlas.Store` before it
-  enters the stream or is broadcast. On boot (and on `reset/1`) the stream is rebuilt
+  enters the log or is broadcast. On boot (and on `reset/1`) the log is rebuilt
   from the adapters plus the store, so annotations and live appends survive a restart.
   If the store is unreachable the feed still serves adapter events, reports
   `status/1` as `persistence: {:error, reason}`, and refuses appends rather than
@@ -27,7 +27,7 @@ defmodule Indivisual.Atlas.Feed do
   alias Indivisual.Atlas.Source
   alias Indivisual.Atlas.Sources.Annotations
   alias Indivisual.Atlas.Store
-  alias Indivisual.Atlas.Stream
+  alias Indivisual.Atlas.Log
 
   @topic "atlas:feed"
   @default_adapters [Indivisual.Atlas.Sources.CivicFixture, Annotations]
@@ -45,14 +45,14 @@ defmodule Indivisual.Atlas.Feed do
   @doc "Subscribes the caller to live appends: it will receive `{:atlas_event, %Event{}}`."
   def subscribe, do: Phoenix.PubSub.subscribe(Indivisual.PubSub, @topic)
 
-  @doc "The current stream."
-  def stream(server \\ __MODULE__), do: GenServer.call(server, :stream)
+  @doc "The current log."
+  def log(server \\ __MODULE__), do: GenServer.call(server, :log)
 
-  @doc "All events in deterministic order (see `Indivisual.Atlas.Stream.events/2` for opts)."
-  def events(server \\ __MODULE__, opts \\ []), do: server |> stream() |> Stream.events(opts)
+  @doc "All events in deterministic order (see `Indivisual.Atlas.Log.events/2` for opts)."
+  def events(server \\ __MODULE__, opts \\ []), do: server |> log() |> Log.events(opts)
 
   @doc "One event by id."
-  def get_event(server \\ __MODULE__, id), do: server |> stream() |> Stream.get(id)
+  def get_event(server \\ __MODULE__, id), do: server |> log() |> Log.get(id)
 
   @doc "Loaded adapters: `[%{info, sources, event_count}]`."
   def adapters(server \\ __MODULE__), do: GenServer.call(server, :adapters)
@@ -80,7 +80,7 @@ defmodule Indivisual.Atlas.Feed do
   def annotate(server \\ __MODULE__, about_id, attrs),
     do: GenServer.call(server, {:annotate, about_id, attrs})
 
-  @doc "Rebuilds the stream from the source adapters plus the persisted store."
+  @doc "Rebuilds the log from the source adapters plus the persisted store."
   def reset(server \\ __MODULE__), do: GenServer.call(server, :reset)
 
   @doc """
@@ -97,7 +97,7 @@ defmodule Indivisual.Atlas.Feed do
   end
 
   @impl true
-  def handle_call(:stream, _from, state), do: {:reply, state.stream, state}
+  def handle_call(:log, _from, state), do: {:reply, state.log, state}
 
   def handle_call(:adapters, _from, state), do: {:reply, state.adapters, state}
 
@@ -120,7 +120,7 @@ defmodule Indivisual.Atlas.Feed do
   end
 
   def handle_call({:annotate, about_id, attrs}, _from, state) do
-    case Stream.get(state.stream, about_id) do
+    case Log.get(state.log, about_id) do
       nil ->
         {:reply, {:error, [{:about_event_id, "not found"}]}, state}
 
@@ -143,15 +143,14 @@ defmodule Indivisual.Atlas.Feed do
   end
 
   defp do_append(event, state) do
-    with {:ok, stream} <- Stream.append(state.stream, event),
+    with {:ok, log} <- Log.append(state.log, event),
          {:ok, _} <- persist(event) do
       Phoenix.PubSub.broadcast(Indivisual.PubSub, @topic, {:atlas_event, event})
 
-      {:reply, {:ok, event},
-       %{state | stream: stream, persisted_count: state.persisted_count + 1}}
+      {:reply, {:ok, event}, %{state | log: log, persisted_count: state.persisted_count + 1}}
     else
       {:error, :duplicate} ->
-        {:reply, {:error, [{:event_id, "already in the stream"}]}, state}
+        {:reply, {:error, [{:event_id, "already in the log"}]}, state}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:reply, {:error, [{:persistence, inspect(changeset.errors)}]}, state}
@@ -181,21 +180,21 @@ defmodule Indivisual.Atlas.Feed do
         end
       end)
 
-    stream = loaded |> Enum.flat_map(& &1.events) |> Stream.new()
+    log = loaded |> Enum.flat_map(& &1.events) |> Log.new()
     {persistence, persisted} = load_persisted()
 
-    {stream, kept} =
-      Enum.reduce(persisted, {stream, 0}, fn event, {stream, kept} ->
-        case Stream.append(stream, event) do
-          {:ok, stream} ->
-            {stream, kept + 1}
+    {log, kept} =
+      Enum.reduce(persisted, {log, 0}, fn event, {log, kept} ->
+        case Log.append(log, event) do
+          {:ok, log} ->
+            {log, kept + 1}
 
           {:error, :duplicate} ->
             Logger.warning(
               "Atlas feed: persisted event #{event.event_id} collides with an adapter event; adapter wins"
             )
 
-            {stream, kept}
+            {log, kept}
         end
       end)
 
@@ -203,7 +202,7 @@ defmodule Indivisual.Atlas.Feed do
       adapter_modules: adapter_modules,
       adapters:
         Enum.map(loaded, &%{info: &1.info, sources: &1.sources, event_count: length(&1.events)}),
-      stream: stream,
+      log: log,
       annotation_seq: max_annotation_seq(persisted),
       persistence: persistence,
       persisted_count: kept

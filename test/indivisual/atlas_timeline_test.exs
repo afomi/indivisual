@@ -20,7 +20,7 @@ defmodule Indivisual.Atlas.TimelineTest do
       "event_type" => "civic.test",
       "occurred_at" => occurred_at,
       "observed_at" => occurred_at,
-      "subject_refs" => ["thing:one"],
+      "object" => ["thing:one"],
       "provenance" => %{"uri" => "test"},
       "truth_state" => "observed"
     })
@@ -121,6 +121,87 @@ defmodule Indivisual.Atlas.TimelineTest do
     end
   end
 
+  describe "ordinal dots (the range bar)" do
+    # Only position in the list and the lane key matter here, so plain maps do.
+    defp items(sources), do: Enum.map(sources, &%{source_id: &1})
+
+    test "one dot per event, evenly spaced end to end" do
+      dots = Timeline.ordinal_dots(items(~w(a a a a a)))
+
+      assert Enum.map(dots, & &1.x) == [0.0, 0.25, 0.5, 0.75, 1.0]
+      assert Enum.all?(dots, &(&1.count == 1))
+    end
+
+    test "a dot sits exactly where a handle on that event would" do
+      dots = Timeline.ordinal_dots(items(~w(a a a a)))
+
+      # Handle fraction for index i of n is i / (n - 1).
+      for {dot, i} <- Enum.with_index(dots), do: assert_in_delta(dot.x, i / 3, 0.001)
+    end
+
+    test "a lone event is centred rather than dividing by zero" do
+      assert [%{x: 0.5, count: 1}] = Timeline.ordinal_dots(items(~w(a)))
+    end
+
+    test "no events, no dots" do
+      assert Timeline.ordinal_dots([]) == []
+      assert Timeline.ordinal_lanes([], & &1.source_id) == %{}
+    end
+
+    test "past the bar's capacity, runs pack and carry their count" do
+      dots = Timeline.ordinal_dots(items(List.duplicate("a", 10)), max: 3)
+
+      assert length(dots) <= 3
+      assert Enum.map(dots, & &1.count) == [4, 4, 2]
+      assert Enum.all?(dots, &(&1.x >= 0.0 and &1.x <= 1.0))
+    end
+
+    test "packing groups, never drops: counts sum to the events" do
+      for n <- [1, 7, 90, 91, 1000] do
+        dots = Timeline.ordinal_dots(items(List.duplicate("a", n)))
+        assert dots |> Enum.map(& &1.count) |> Enum.sum() == n
+        assert length(dots) <= 90
+      end
+    end
+  end
+
+  describe "ordinal lanes (the bar fanned out by source)" do
+    test "each source gets its own lane, on the combined bar's axis" do
+      events = items(~w(a b a c b))
+      lanes = Timeline.ordinal_lanes(events, & &1.source_id)
+
+      assert Map.keys(lanes) |> Enum.sort() == ~w(a b c)
+      assert Enum.map(lanes["a"], & &1.x) == [0.0, 0.5]
+      assert Enum.map(lanes["b"], & &1.x) == [0.25, 1.0]
+      assert Enum.map(lanes["c"], & &1.x) == [0.75]
+    end
+
+    test "lanes collapse back into the single bar" do
+      events = items(~w(a b a c b a a b c c a b))
+
+      for opts <- [[], [max: 4]] do
+        combined = Timeline.ordinal_dots(events, opts)
+        lanes = Timeline.ordinal_lanes(events, & &1.source_id, opts)
+
+        by_x =
+          lanes
+          |> Map.values()
+          |> List.flatten()
+          |> Enum.group_by(& &1.x, & &1.count)
+          |> Map.new(fn {x, counts} -> {x, Enum.sum(counts)} end)
+
+        assert by_x == Map.new(combined, &{&1.x, &1.count})
+      end
+    end
+
+    test "a packed run splits its count between the sources in it" do
+      lanes = Timeline.ordinal_lanes(items(~w(a a b a)), & &1.source_id, max: 1)
+
+      assert [%{count: 3, indexes: [0, 1, 3]}] = lanes["a"]
+      assert [%{count: 1, indexes: [2]}] = lanes["b"]
+    end
+  end
+
   describe "ticks" do
     test "are quarterly and inside the band" do
       events = [
@@ -133,6 +214,59 @@ defmodule Indivisual.Atlas.TimelineTest do
       assert length(ticks) > 0
       assert Enum.all?(ticks, &(&1.x >= 0 and &1.x <= 100))
       assert Enum.all?(ticks, &(&1.label =~ ~r/^(Jan|Apr|Jul|Oct) \d{4}$/))
+    end
+
+    defp labels(from, to) do
+      [event("a", from), event("b", to)]
+      |> Timeline.build()
+      |> Timeline.ticks()
+      |> Enum.map(& &1.label)
+    end
+
+    test "the grain follows the window, so narrowing the range re-labels the axis" do
+      # The same axis, read at five widths.
+      assert labels(~U[2000-01-01 00:00:00Z], ~U[2026-01-01 00:00:00Z]) |> hd() =~ ~r/^\d{4}$/
+
+      assert labels(~U[2024-01-01 00:00:00Z], ~U[2026-01-01 00:00:00Z]) |> hd() =~
+               ~r/^[A-Z][a-z]{2} \d{4}$/
+
+      assert labels(~U[2024-04-09 00:00:00Z], ~U[2024-08-13 00:00:00Z]) == [
+               "May 2024",
+               "Jun 2024",
+               "Jul 2024",
+               "Aug 2024"
+             ]
+
+      assert labels(~U[2024-04-09 00:00:00Z], ~U[2024-04-14 00:00:00Z]) |> hd() == "Apr 9, 2024"
+      assert labels(~U[2024-04-09 08:00:00Z], ~U[2024-04-09 14:00:00Z]) |> hd() == "Apr 9 08:00"
+    end
+
+    test "never more labels than a thin band can hold" do
+      for days <- [1, 3, 10, 45, 200, 900, 5000, 40_000] do
+        to = DateTime.add(~U[2024-04-09 00:00:00Z], days * 86_400, :second)
+        count = length(labels(~U[2024-04-09 00:00:00Z], to))
+
+        assert count in 1..10, "#{days} days produced #{count} ticks"
+      end
+    end
+
+    test "a window of one instant still names its day" do
+      ticks = [event("a", ~U[2024-04-09 12:00:00Z])] |> Timeline.build() |> Timeline.ticks()
+
+      assert ticks == [%{x: 50.0, label: "Apr 9, 2024"}]
+    end
+
+    test "ticks stay inside the band at every grain" do
+      for days <- [1, 10, 200, 5000] do
+        to = DateTime.add(~U[2024-04-09 07:30:00Z], days * 86_400, :second)
+
+        ticks =
+          [event("a", ~U[2024-04-09 07:30:00Z]), event("b", to)]
+          |> Timeline.build()
+          |> Timeline.ticks()
+
+        assert Enum.all?(ticks, &(&1.x >= 0 and &1.x <= 100))
+      end
     end
 
     test "an empty band has no ticks" do

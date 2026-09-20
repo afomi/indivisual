@@ -5,7 +5,7 @@ defmodule Indivisual.Atlas do
 
       append-only source events
               ↓ normalize + preserve provenance   (Indivisual.Atlas.Source)
-      canonical event stream                      (Indivisual.Atlas.Stream / Feed)
+      canonical event stream                      (Indivisual.Atlas.Log / Feed)
               ↓ project                           (Indivisual.Atlas.Projections / Topology)
       read models: activity, entity, topology, provenance
               ↓

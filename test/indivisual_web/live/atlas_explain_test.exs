@@ -23,6 +23,15 @@ defmodule IndivisualWeb.AtlasExplainTest do
     assert has_element?(view, "#atlas-explain-event")
   end
 
+  test "the offer follows the record's fields and sits right above annotation", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/atlas")
+
+    at = fn marker -> html |> :binary.match(marker) |> elem(0) end
+
+    assert at.(~s(class="atlas-fields")) < at.(~s(id="atlas-explain-event"))
+    assert at.(~s(id="atlas-explain-event")) < at.(~s(id="atlas-annotation-form"))
+  end
+
   test "asking produces an explanation of the selected record", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/atlas")
 
@@ -31,6 +40,51 @@ defmodule IndivisualWeb.AtlasExplainTest do
     # The Fake adapter answers synchronously; the result arrives as a message.
     assert render_async(view) =~ "This record describes"
     assert has_element?(view, "#atlas-explain-result")
+  end
+
+  describe "while it is working" do
+    test "the loading state announces itself to assistive tech", %{conn: conn} do
+      # The Fake adapter answers immediately, so drive the assign directly to
+      # see the state a real model's 3-8 seconds would show.
+      {:ok, view, _} = live(conn, ~p"/atlas")
+
+      send(view.pid, {:force_explain_loading, "civic:eltsp:entity:plan"})
+
+      html = render(view)
+
+      assert html =~ "atlas-explain-loading"
+      assert html =~ ~s(role="status")
+      assert html =~ ~s(aria-busy="true")
+      assert html =~ "Reading the record"
+    end
+
+    test "the wait shows a skeleton, not a bare line of text", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas")
+      send(view.pid, {:force_explain_loading, "civic:eltsp:entity:plan"})
+
+      assert has_element?(view, ".atlas-explain__skeleton"),
+             "a multi-second wait needs to show that work is moving"
+    end
+
+    test "a slow wait can be cancelled", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas")
+      send(view.pid, {:force_explain_loading, "civic:eltsp:entity:plan"})
+
+      assert has_element?(view, "#atlas-explain-loading")
+
+      view
+      |> element(~s(#atlas-explain-loading button[phx-click="hide_explain_event"]))
+      |> render_click()
+
+      refute has_element?(view, "#atlas-explain-loading")
+    end
+
+    test "the trigger disables itself while working", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas")
+
+      assert view |> element("#atlas-explain-event") |> render() =~ "phx-disable-with",
+             "a slow action must not look idle after it is clicked"
+    end
   end
 
   test "generated prose is labelled as generated", %{conn: conn} do
@@ -62,7 +116,7 @@ defmodule IndivisualWeb.AtlasExplainTest do
     assert has_element?(view, "#atlas-explain-result")
 
     # Move to a different event.
-    view |> form("#atlas-scrubber", %{"index" => "0"}) |> render_change()
+    view |> element("#atlas-activity-0 button") |> render_click()
     assert_patch(view)
 
     refute has_element?(view, "#atlas-explain-result"),

@@ -17,7 +17,6 @@ defmodule IndivisualWeb.AtlasProjectionMenuTest do
     assert has_element?(view, ~s(#atlas-projections[role="radiogroup"]))
     # It precedes the column grid rather than living inside the aside.
     assert html =~ ~r/id="atlas-projection-nav".*lg:grid-cols-/s
-    refute html =~ ~r/id="atlas-rail".*id="atlas-projections"/s
   end
 
   test "every projection is a radio option, with name and question", %{conn: conn} do

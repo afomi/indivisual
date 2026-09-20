@@ -9,7 +9,7 @@ defmodule Indivisual.Atlas.EventRecord do
 
   alias Indivisual.Atlas.Event
 
-  @fields ~w(event_id source_id stream_id sequence event_type occurred_at observed_at actor_ref subject_refs payload provenance truth_state raw)a
+  @fields ~w(event_id source_id stream_id sequence event_type occurred_at observed_at actor object payload provenance truth_state raw)a
 
   schema "atlas_events" do
     field :event_id, :string
@@ -19,8 +19,8 @@ defmodule Indivisual.Atlas.EventRecord do
     field :event_type, :string
     field :occurred_at, :utc_datetime_usec
     field :observed_at, :utc_datetime_usec
-    field :actor_ref, :string
-    field :subject_refs, {:array, :string}, default: []
+    field :actor, :string
+    field :object, {:array, :string}, default: []
     field :payload, :map, default: %{}
     field :provenance, :map, default: %{}
     field :truth_state, :string

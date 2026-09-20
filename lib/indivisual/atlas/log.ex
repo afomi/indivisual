@@ -1,6 +1,6 @@
-defmodule Indivisual.Atlas.Stream do
+defmodule Indivisual.Atlas.Log do
   @moduledoc """
-  The canonical, append-only stream of normalized Atlas events.
+  The canonical, append-only log of normalized Atlas events.
 
   Pure data structure: events are keyed by `event_id`, appended once, never mutated,
   and always read back in the deterministic order defined by `Indivisual.Atlas.Event.sort_key/1`.
@@ -13,29 +13,29 @@ defmodule Indivisual.Atlas.Stream do
 
   @type t :: %__MODULE__{by_id: %{String.t() => Event.t()}}
 
-  @doc "Builds a stream from a list of validated events. Duplicate ids raise."
+  @doc "Builds a log from a list of validated events. Duplicate ids raise."
   def new(events \\ []) do
-    Enum.reduce(events, %__MODULE__{}, fn event, stream ->
-      case append(stream, event) do
-        {:ok, stream} -> stream
+    Enum.reduce(events, %__MODULE__{}, fn event, log ->
+      case append(log, event) do
+        {:ok, log} -> log
         {:error, :duplicate} -> raise ArgumentError, "duplicate event_id #{event.event_id}"
       end
     end)
   end
 
   @doc "Appends one event. Returns `{:error, :duplicate}` if its id is already present."
-  def append(%__MODULE__{by_id: by_id} = stream, %Event{event_id: id} = event) do
+  def append(%__MODULE__{by_id: by_id} = log, %Event{event_id: id} = event) do
     if Map.has_key?(by_id, id) do
       {:error, :duplicate}
     else
-      {:ok, %{stream | by_id: Map.put(by_id, id, event)}}
+      {:ok, %{log | by_id: Map.put(by_id, id, event)}}
     end
   end
 
   @doc "Fetches an event by id."
   def get(%__MODULE__{by_id: by_id}, id), do: Map.get(by_id, id)
 
-  @doc "Number of events in the stream."
+  @doc "Number of events in the log."
   def size(%__MODULE__{by_id: by_id}), do: map_size(by_id)
 
   @doc """

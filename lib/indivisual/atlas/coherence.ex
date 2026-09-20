@@ -101,15 +101,16 @@ defmodule Indivisual.Atlas.Coherence do
       Enum.map(chain.steps, fn step ->
         match =
           Enum.find(relationships, fn rel ->
-            kind_of(entities, rel.from) == step.from and kind_of(entities, rel.to) == step.to
+            kind_of(entities, rel.subject) == step.from and
+              kind_of(entities, rel.object) == step.to
           end)
 
         %{
           step: step,
           label: step.label,
           relationship: match,
-          from: match && Map.get(entities, match.from),
-          to: match && Map.get(entities, match.to)
+          from: match && Map.get(entities, match.subject),
+          to: match && Map.get(entities, match.object)
         }
       end)
 

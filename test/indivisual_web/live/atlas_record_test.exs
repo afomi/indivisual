@@ -22,6 +22,14 @@ defmodule IndivisualWeb.AtlasRecordTest do
       assert String.starts_with?(short, "aaaaaaaa")
     end
 
+    test "any hash-valued provenance key counts as a digest" do
+      assert AtlasLive.digest_key?("content_hash")
+      assert AtlasLive.digest_key?("about_content_hash")
+      assert AtlasLive.digest_key?("txid")
+      refute AtlasLive.digest_key?("uri")
+      refute AtlasLive.digest_key?("about_event_id")
+    end
+
     test "a short value is left alone" do
       assert AtlasLive.abbrev("Item 3A") == "Item 3A"
     end

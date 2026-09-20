@@ -1,0 +1,22 @@
+<span
+  id={@id}
+  class="atlas-range__dots"
+  aria-hidden="true"
+>
+  <%= for dot <- @dots do %>
+    <span
+      class={[
+        "atlas-range__dot",
+        dot.count > 1 && "is-packed",
+        dot.read? && "is-read",
+        dot.selected? && "is-selected"
+      ]}
+      style={"--x: #{dot.x}"}
+      data-count={dot.count}
+    >
+      <%= if dot.count > 1 do %>
+        {dot.count}
+      <% end %>
+    </span>
+  <% end %>
+</span>

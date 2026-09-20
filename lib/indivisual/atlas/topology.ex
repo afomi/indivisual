@@ -4,10 +4,10 @@ defmodule Indivisual.Atlas.Topology do
   Atlas events.
 
   Entities come from two places: explicit `*.entity.registered` events whose payload
-  carries `%{"entity" => %{"ref", "label", "kind", "geo"}}`, and any `subject_refs` or
-  `actor_ref` that no registration names (these get a humanized label so nothing
+  carries `%{"entity" => %{"ref", "label", "kind", "geo"}}`, and any `object` or
+  `actor` that no registration names (these get a humanized label so nothing
   referenced is invisible). Relationships come from events whose payload carries
-  `%{"relationship" => %{"from", "verb", "to"}}`; each keeps the asserting event's
+  `%{"relationship" => %{"subject", "relationship", "object"}}`; each keeps the asserting event's
   source and truth state, so no inferred link is presented as a source fact.
 
   Geographic coordinates are optional metadata. `layout/1` places entities on a
@@ -27,9 +27,9 @@ defmodule Indivisual.Atlas.Topology do
         }
 
   @type relationship :: %{
-          from: String.t(),
-          verb: String.t(),
-          to: String.t(),
+          subject: String.t(),
+          relationship: String.t(),
+          object: String.t(),
           event_id: String.t(),
           source_id: String.t(),
           truth_state: String.t(),
@@ -77,8 +77,8 @@ defmodule Indivisual.Atlas.Topology do
   def neighbors(relationships, ref) do
     relationships
     |> Enum.flat_map(fn
-      %{from: ^ref, to: to} -> [to]
-      %{from: from, to: ^ref} -> [from]
+      %{subject: ^ref, object: object} -> [object]
+      %{subject: subject, object: ^ref} -> [subject]
       _ -> []
     end)
     |> Enum.uniq()
@@ -86,7 +86,7 @@ defmodule Indivisual.Atlas.Topology do
 
   @doc "Relationships touching `ref`."
   def relationships_for(relationships, ref) do
-    Enum.filter(relationships, fn r -> r.from == ref or r.to == ref end)
+    Enum.filter(relationships, fn r -> r.subject == ref or r.object == ref end)
   end
 
   @doc """

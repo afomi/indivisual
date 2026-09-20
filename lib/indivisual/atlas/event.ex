@@ -15,12 +15,23 @@ defmodule Indivisual.Atlas.Event do
     * `event_type`   — namespaced verb, e.g. `civic.plan.adopted` or `chain.tx.confirmed`
     * `occurred_at`  — source-asserted event time when available
     * `observed_at`  — when Indivisual retrieved or accepted the event
-    * `actor_ref`    — optional public actor identifier
-    * `subject_refs` — one or more affected entity identifiers
+    * `actor`        — optional ref of the public actor who did it
+    * `object`       — one or more refs of the entities it affects
     * `payload`      — normalized attributes
     * `provenance`   — canonical URI, transaction id, document reference, hash, signature, etc.
     * `truth_state`  — one of #{inspect(~w(observed reported proposed adopted delivered superseded))}
     * `raw`          — the original source payload, kept verbatim
+
+  ## Standards alignment
+
+  Where ActivityStreams 2.0 has an exact word, the field uses it, so an event reads
+  as an AS2 Activity without a mapping layer: `actor` and `object` are the AS2
+  properties of the same name, and a payload relationship is an AS2 `Relationship`
+  (`subject`, `relationship`, `object`). `object` is multi-valued, as AS2 allows; Atlas
+  does not yet split `target` or `location` out of it, so every affected ref rides there.
+
+  The remaining fields are the event-sourcing envelope, which AS2 has no vocabulary
+  for, and keep their own names. `STANDARDS.md` holds the full table.
 
   Ordering is deterministic: `sort_key/1` orders by effective time (occurred_at, falling
   back to observed_at), then `sequence`, then `source_id`, `stream_id`, and `event_id`,
@@ -38,8 +49,8 @@ defmodule Indivisual.Atlas.Event do
           event_type: String.t(),
           occurred_at: DateTime.t() | nil,
           observed_at: DateTime.t(),
-          actor_ref: String.t() | nil,
-          subject_refs: [String.t()],
+          actor: String.t() | nil,
+          object: [String.t()],
           payload: map(),
           provenance: map(),
           truth_state: String.t(),
@@ -53,8 +64,8 @@ defmodule Indivisual.Atlas.Event do
             event_type: nil,
             occurred_at: nil,
             observed_at: nil,
-            actor_ref: nil,
-            subject_refs: [],
+            actor: nil,
+            object: [],
             payload: %{},
             provenance: %{},
             truth_state: "observed",
@@ -79,8 +90,8 @@ defmodule Indivisual.Atlas.Event do
       event_type: attrs["event_type"],
       occurred_at: parse_time(attrs["occurred_at"]),
       observed_at: parse_time(attrs["observed_at"]),
-      actor_ref: attrs["actor_ref"],
-      subject_refs: List.wrap(attrs["subject_refs"]),
+      actor: attrs["actor"],
+      object: List.wrap(attrs["object"]),
       payload: attrs["payload"] || %{},
       provenance: normalize_provenance(attrs["provenance"]),
       truth_state: attrs["truth_state"] || "observed",
@@ -126,9 +137,9 @@ defmodule Indivisual.Atlas.Event do
   def effective_time(%__MODULE__{occurred_at: nil, observed_at: observed}), do: observed
   def effective_time(%__MODULE__{occurred_at: occurred}), do: occurred
 
-  @doc "Every entity reference this event touches: subjects plus the actor, deduplicated in order."
-  def affected_refs(%__MODULE__{subject_refs: subjects, actor_ref: actor}) do
-    (subjects ++ List.wrap(actor)) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+  @doc "Every entity reference this event touches: objects plus the actor, deduplicated in order."
+  def affected_refs(%__MODULE__{object: objects, actor: actor}) do
+    (objects ++ List.wrap(actor)) |> Enum.reject(&is_nil/1) |> Enum.uniq()
   end
 
   @doc "True when the event is a user annotation rather than a source fact."
@@ -140,12 +151,21 @@ defmodule Indivisual.Atlas.Event do
   @doc "Prefix shared by all annotation event types."
   def annotation_prefix, do: @annotation_prefix
 
-  @doc "The relationship asserted by this event, if any, as `%{from, verb, to}`."
+  @doc """
+  The relationship asserted by this event, if any, as `%{subject, relationship, object}` —
+  the shape of an ActivityStreams `Relationship`: `subject` `relationship` `object`.
+  """
   def relationship(%__MODULE__{
-        payload: %{"relationship" => %{"from" => from, "verb" => verb, "to" => to}}
+        payload: %{
+          "relationship" => %{
+            "subject" => subject,
+            "relationship" => relationship,
+            "object" => object
+          }
+        }
       })
-      when is_binary(from) and is_binary(verb) and is_binary(to),
-      do: %{from: from, verb: verb, to: to}
+      when is_binary(subject) and is_binary(relationship) and is_binary(object),
+      do: %{subject: subject, relationship: relationship, object: object}
 
   def relationship(_), do: nil
 
@@ -191,7 +211,8 @@ defmodule Indivisual.Atlas.Event do
     |> require_observed_at(event)
     |> require_provenance(event)
     |> require_truth_state(event)
-    |> require_subject_refs(event)
+    |> require_object(event)
+    |> require_relationship_shape(event)
     |> Enum.reverse()
   end
 
@@ -225,14 +246,24 @@ defmodule Indivisual.Atlas.Event do
   defp require_truth_state(errors, _),
     do: [{:truth_state, "must be one of #{Enum.join(@truth_states, ", ")}"} | errors]
 
-  defp require_subject_refs(errors, %{subject_refs: [_ | _] = refs}) do
+  defp require_object(errors, %{object: [_ | _] = refs}) do
     if Enum.all?(refs, &is_binary/1),
       do: errors,
-      else: [{:subject_refs, "must be strings"} | errors]
+      else: [{:object, "must be strings"} | errors]
   end
 
-  defp require_subject_refs(errors, _),
-    do: [{:subject_refs, "must name at least one affected entity"} | errors]
+  defp require_object(errors, _),
+    do: [{:object, "must name at least one affected entity"} | errors]
+
+  # A payload that says "relationship" but is not shaped like one would otherwise
+  # be read as asserting nothing, and the link would vanish without a trace.
+  defp require_relationship_shape(errors, %{payload: %{"relationship" => _}} = event) do
+    if relationship(event),
+      do: errors,
+      else: [{:payload, "relationship must name a subject, relationship, and object"} | errors]
+  end
+
+  defp require_relationship_shape(errors, _), do: errors
 
   # --- normalization helpers ---
 

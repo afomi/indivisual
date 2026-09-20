@@ -126,7 +126,7 @@ defmodule Indivisual.Atlas.Projections do
 
     relationships = Topology.relationships(window)
     entities = Topology.entities(window)
-    connected = relationships |> Enum.flat_map(&[&1.from, &1.to]) |> MapSet.new()
+    connected = relationships |> Enum.flat_map(&[&1.subject, &1.object]) |> MapSet.new()
     entities = Map.filter(entities, fn {ref, _} -> MapSet.member?(connected, ref) end)
 
     base("topology", entities, relationships, events)

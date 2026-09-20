@@ -1,0 +1,32 @@
+<%!-- Scrub within the selected range. --%>
+<.accordion
+  id="atlas-scrubber-panel"
+  title="Position"
+  label="scrubber"
+  open?={@open?}
+  toggle="toggle_scrubber"
+  toggle_id="atlas-scrubber-collapse"
+  body_id="atlas-scrubber-body"
+>
+  <form
+    phx-change="scrub"
+    id="atlas-scrubber"
+    class="atlas-timeline__scrub"
+  >
+    <label
+      for="atlas-scrubber-input"
+      class="sr-only"
+    >
+      Timeline scrubber
+    </label>
+    <input
+      id="atlas-scrubber-input"
+      type="range"
+      name="index"
+      min="0"
+      max={max(@count - 1, 0)}
+      value={@index || 0}
+      aria-valuetext={@valuetext}
+    />
+  </form>
+</.accordion>

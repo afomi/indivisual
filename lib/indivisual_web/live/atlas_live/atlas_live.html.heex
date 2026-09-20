@@ -77,395 +77,544 @@ would be a good way to break it silently. --%>
     </header>
 
     <%!-- ============ Projection selector ============ --%>
-    <%!-- Four mutually exclusive options, so a radio group: the browser gives
+    <%!-- The projection row, timeline, and scrubber are the controls; the columns
+    below are what they control. They stick to the top so a reader deep in the
+    graph or map can still change the range without scrolling back up — see
+    `.atlas-controls` for when sticking is withheld. --%>
+    <div
+      id="atlas-controls"
+      class="atlas-controls"
+    >
+      <%!-- Four mutually exclusive options, so a radio group: the browser gives
     arrow-key navigation and a single-selection contract for free, and all four
     stay visible rather than hiding behind a menu. --%>
-    <nav
-      id="atlas-projection-nav"
-      class="atlas-projnav"
-      aria-label="Projection"
-    >
-      <form
-        id="atlas-projections"
-        phx-change="select_projection"
-        class="atlas-projnav__row"
-        role="radiogroup"
+      <nav
+        id="atlas-projection-nav"
+        class="atlas-projnav"
         aria-label="Projection"
       >
-        <%= for def <- @projections do %>
-          <label class={["atlas-projnav__option", def.id == @projection && "is-active"]}>
-            <input
-              type="radio"
-              name="projection"
-              value={def.id}
-              checked={def.id == @projection}
-              class="sr-only"
-            />
-            <span class="atlas-projnav__name">
-              {def.name}
-            </span>
-            <span class="atlas-projnav__question">
-              {def.question}
-            </span>
-          </label>
-        <% end %>
-      </form>
+        <form
+          id="atlas-projections"
+          phx-change="select_projection"
+          class="atlas-projnav__row"
+          role="radiogroup"
+          aria-label="Projection"
+        >
+          <%= for def <- @projections do %>
+            <label class={["atlas-projnav__option", def.id == @projection && "is-active"]}>
+              <input
+                type="radio"
+                name="projection"
+                value={def.id}
+                checked={def.id == @projection}
+                class="sr-only"
+              />
+              <span class="atlas-projnav__name">
+                {def.name}
+              </span>
+              <span class="atlas-projnav__question">
+                {def.question}
+              </span>
+            </label>
+          <% end %>
+        </form>
+      </nav>
 
-      <%!-- Reference material, not a control: consulted once, then in the way. --%>
-      <button
-        type="button"
-        id="atlas-legend-open"
-        phx-click="show_legend"
-        class="atlas-legend-button"
-        aria-haspopup="dialog"
-      >
-        <span aria-hidden="true">ⓘ</span> Truth states
-      </button>
-    </nav>
+      <%!-- The full-width source row that sat here is unmounted, not deleted: it
+    lives on as `IndivisualWeb.AtlasComponents.source_nav/1`. The source filter
+    is now the checklist on the activity list, beside the thing it filters. --%>
 
-    <%!-- ============ Source selector ============ --%>
-    <%!-- Sources get the same treatment as projections: a full-width row of
-    options above the timeline, each naming what it is and who publishes it.
-    Unlike projections these are NOT mutually exclusive — any combination of
-    sources can be shown — so they are toggle buttons with aria-pressed rather
-    than a radio group. Same visual grammar, honest semantics. --%>
-    <nav
-      id="atlas-source-nav"
-      class="atlas-projnav"
-      aria-label="Sources"
-    >
-      <div class="atlas-projnav__row atlas-sourcenav__row">
-        <%= for {id, source} <- Enum.sort_by(@sources, fn {_, s} -> s.title end) do %>
-          <button
-            type="button"
-            phx-click="toggle_source"
-            phx-value-id={id}
-            aria-pressed={to_string(id in @source_filter)}
-            class={[
-              "atlas-projnav__option atlas-sourcenav__option",
-              id in @source_filter && "is-active"
-            ]}
-          >
-            <span class="atlas-projnav__name">
-              {source.title}
-            </span>
-            <span class="atlas-projnav__question">
-              {source[:publisher] || "—"}
-            </span>
-            <span class="atlas-sourcenav__meta">
-              {source.status} · adapter: {source.adapter.status}
-            </span>
-          </button>
-        <% end %>
-      </div>
-
-      <p class="atlas-sourcenav__readout">
-        <%= if @source_filter == [] do %>
-          All sources shown.
-        <% else %>
-          Filtering to {length(@source_filter)} of {map_size(@sources)} sources.
-          <button
-            type="button"
-            phx-click="clear_sources"
-            class="atlas-sourcenav__clear"
-          >
-            Show all
-          </button>
-        <% end %>
-      </p>
-    </nav>
-
-    <%!-- ============ Timeline: full-width, above the columns ============ --%>
-    <%!-- Its own element at 100% width, holding exactly two controls: an "all
-    events" toggle, and a range with two dials. Either bound may be left open,
+      <%!-- ============ Timeline: full-width, above the columns ============ --%>
+      <%!-- Its own element at 100% width, holding exactly two controls: an "all
+    events" toggle, and one range bar with two handles. Either bound may be left open,
     so the range reads "from the beginning" or "to the present" rather than
     forcing a window. --%>
-    <section
-      id="atlas-timeline"
-      class="atlas-timeline"
-      aria-label="Timeline"
-    >
-      <div class="atlas-timeline__bar">
-        <button
-          type="button"
-          id="atlas-timeline-collapse"
-          phx-click="toggle_timeline"
-          class="atlas-collapse"
-          aria-expanded={to_string(@timeline_open?)}
-          aria-controls="atlas-timeline-body"
-          title={if @timeline_open?, do: "Collapse timeline", else: "Expand timeline"}
-        >
-          <span aria-hidden="true">
-            <%= if @timeline_open? do %>
-              ▾
-            <% else %>
-              ▸
-            <% end %>
-          </span>
-          <span class="sr-only">
-            <%= if @timeline_open? do %>
-              Collapse timeline
-            <% else %>
-              Expand timeline
-            <% end %>
-          </span>
-        </button>
-
-        <h2 class="atlas-timeline__title">
-          Timeline
-        </h2>
-
-        <label
-          id="atlas-timeline-all"
-          class="atlas-timeline__toggle"
-        >
-          <input
-            type="checkbox"
-            phx-click="toggle_all"
-            checked={@show_all}
-            aria-describedby="atlas-timeline-readout"
-          />
-          <span>All events</span>
-        </label>
-
-        <p
-          id="atlas-timeline-readout"
-          class="atlas-timeline__readout"
-        >
-          <%= if @all_events == [] do %>
-            No events.
-          <% else %>
-            <%= if @show_all do %>
-              Showing all {length(@all_events)}
-            <% else %>
-              Showing {length(@events)} of {length(@all_events)}
-              <%= if @range_from || @range_to do %>
-                · {range_label(@all_events, @range_from, @range_to)}
-              <% else %>
-                · full range
-              <% end %>
-            <% end %>
-          <% end %>
-        </p>
-
-        <div class="atlas-timeline__actions">
-          <button
-            type="button"
-            phx-click="step"
-            phx-value-dir="prev"
-            aria-label="Previous event"
-          >
-            ← Prev
-          </button>
-          <button
-            type="button"
-            phx-click="step"
-            phx-value-dir="next"
-            aria-label="Next event"
-          >
-            Next →
-          </button>
-          <%= if @range_from || @range_to do %>
-            <button
-              type="button"
-              phx-click="clear_range"
-              id="atlas-timeline-clear"
-            >
-              Clear range
-            </button>
-          <% end %>
-        </div>
-      </div>
-
-      <%!-- Not merely hidden: a collapsed band should not ship 16 mark
-      buttons and two range inputs the reader cannot see. --%>
-      <div
-        id="atlas-timeline-body"
-        hidden={not @timeline_open?}
+      <section
+        id="atlas-timeline"
+        class="atlas-timeline"
+        aria-label="Timeline"
       >
-        <%= if @timeline_open? do %>
-          <form
-            phx-change="range"
-            id="atlas-timeline-range"
-            class={["atlas-timeline__range", @show_all && "is-disabled"]}
-          >
+        <AtlasComponents.accordion
+          id="atlas-timeline-panel"
+          title="Timeline"
+          open?={@timeline_open?}
+          toggle="toggle_timeline"
+          toggle_id="atlas-timeline-collapse"
+          body_id="atlas-timeline-body"
+        >
+          <:head>
             <label
-              for="atlas-timeline-from"
-              class="sr-only"
+              id="atlas-timeline-all"
+              class="atlas-timeline__toggle"
             >
-              Range start
+              <input
+                type="checkbox"
+                phx-click="toggle_all"
+                checked={@show_all}
+                aria-describedby="atlas-timeline-readout"
+              />
+              <span>All events</span>
             </label>
-            <input
-              id="atlas-timeline-from"
-              type="range"
-              name="from"
-              min="0"
-              max={max(length(@all_events) - 1, 0)}
-              value={@range_from || 0}
-              disabled={@show_all}
-              aria-valuetext={index_label(@all_events, @range_from || 0)}
-            />
-            <label
-              for="atlas-timeline-to"
-              class="sr-only"
-            >
-              Range end
-            </label>
-            <input
-              id="atlas-timeline-to"
-              type="range"
-              name="to"
-              min="0"
-              max={max(length(@all_events) - 1, 0)}
-              value={@range_to || max(length(@all_events) - 1, 0)}
-              disabled={@show_all}
-              aria-valuetext={
-                index_label(@all_events, @range_to || max(length(@all_events) - 1, 0))
-              }
-            />
-          </form>
 
-          <%!-- Marks: real time horizontally, simultaneity stacked vertically.
-      No horizontal scale separates 12 events that share a timestamp, so the
-      band stops trying and stacks them instead. --%>
-          <%= if @timeline.marks != [] do %>
-            <div
-              id="atlas-timeline-marks"
-              class="atlas-marks"
-              style={"--lanes: #{@timeline.lanes}"}
-              aria-label="Events positioned by time"
+            <%!-- One readout for the whole band: how much of the record is in view,
+          over what range, and where the reader stands in it. It lives in the
+          header, so it still reads when either panel is folded. --%>
+            <p
+              id="atlas-timeline-readout"
+              class="atlas-timeline__readout"
             >
-              <%= for tick <- timeline_ticks(@timeline) do %>
-                <span
-                  class="atlas-marks__tick"
-                  style={"left: #{tick.x}%"}
-                  aria-hidden="true"
-                >
-                  <span class="atlas-marks__tick-label">{tick.label}</span>
+              <%= if @all_events == [] do %>
+                No events.
+              <% else %>
+                Showing {length(@events)} of {length(@all_events)} ·
+                <%= if @range_from || @range_to do %>
+                  {if @range_outside?, do: "outside "}{range_label(
+                    @all_events,
+                    @range_from,
+                    @range_to
+                  )}
+                <% else %>
+                  full range
+                <% end %>
+                <span id="atlas-timeline-position">
+                  <%= if @selected do %>
+                    · event {(@selected_index || 0) + 1} · {date(Event.effective_time(@selected))}
+                  <% else %>
+                    · no events match the current filter
+                  <% end %>
                 </span>
               <% end %>
+            </p>
 
-              <%= for mark <- @timeline.marks do %>
+            <div class="atlas-timeline__actions">
+              <button
+                type="button"
+                phx-click="step"
+                phx-value-dir="prev"
+                aria-label="Previous event"
+              >
+                ← Prev
+              </button>
+              <button
+                type="button"
+                phx-click="step"
+                phx-value-dir="next"
+                aria-label="Next event"
+              >
+                Next →
+              </button>
+              <%= if @range_from || @range_to do %>
+                <button
+                  type="button"
+                  phx-click="clear_range"
+                  id="atlas-timeline-clear"
+                >
+                  Clear range
+                </button>
+              <% end %>
+            </div>
+          </:head>
+
+          <%!-- Not merely hidden: a collapsed band should not ship 16 mark
+          buttons and two range inputs the reader cannot see. --%>
+          <%= if @timeline_open? do %>
+            <%!-- One bar, two handles. The two native range inputs share a
+            single track (CSS overlays them; only the thumbs take pointer
+            events), so it stays keyboard-accessible with no hook. A handle
+            resting on an end of the bar is an OPEN bound — "from the start" /
+            "to the present" — so relaxing a constraint is just letting go of
+            it at the edge. The mode switch reads the same window from either
+            side: what happened in it, or what happened outside it. --%>
+            <div
+              id="atlas-timeline-rangebar"
+              class={["atlas-range", @show_all && "is-disabled"]}
+            >
+              <form
+                phx-change="range"
+                id="atlas-timeline-range"
+                class={["atlas-range__bar", @range_outside? && "is-outside"]}
+                style={"--from: #{range_fraction(@all_events, @range_from, :start)}; --to: #{range_fraction(@all_events, @range_to, :end)}"}
+              >
+                <span
+                  class="atlas-range__track"
+                  aria-hidden="true"
+                ></span>
+                <%!-- One dot per activity, on the handles' own (ordinal) axis, so
+                a handle lands exactly on a dot. Display only: picking an event
+                is the Position slider's job, and the dots do not compete with
+                it. Past the bar's capacity, runs of events pack into one dot
+                that carries its count. When the bar is fanned out by source the
+                dots move down into their lanes, so each activity is drawn once
+                in either state. --%>
+                <%= unless @lanes? do %>
+                  <AtlasComponents.range_dots
+                    id="atlas-timeline-dots"
+                    dots={@range_dots.all}
+                  />
+                <% end %>
+                <label
+                  for="atlas-timeline-from"
+                  class="sr-only"
+                >
+                  Range start
+                </label>
+                <input
+                  id="atlas-timeline-from"
+                  type="range"
+                  name="from"
+                  min="0"
+                  max={max(length(@all_events) - 1, 0)}
+                  value={@range_from || 0}
+                  disabled={@show_all}
+                  aria-valuetext={
+                    if(@range_from,
+                      do: index_label(@all_events, @range_from),
+                      else: "from the start"
+                    )
+                  }
+                />
+                <label
+                  for="atlas-timeline-to"
+                  class="sr-only"
+                >
+                  Range end
+                </label>
+                <input
+                  id="atlas-timeline-to"
+                  type="range"
+                  name="to"
+                  min="0"
+                  max={max(length(@all_events) - 1, 0)}
+                  value={@range_to || max(length(@all_events) - 1, 0)}
+                  disabled={@show_all}
+                  aria-valuetext={
+                    if(@range_to, do: index_label(@all_events, @range_to), else: "to the present")
+                  }
+                />
+              </form>
+
+              <%!-- The accordion: one bar holding every activity, or that same
+              bar fanned out into one lane per source. Lanes share the bar's
+              axis and its packing, so a lane's dot sits directly under the
+              place it came out of and the lanes sum back to the single bar. --%>
+              <button
+                type="button"
+                id="atlas-timeline-lanes-toggle"
+                phx-click="toggle_lanes"
+                class="atlas-range__fan"
+                aria-expanded={to_string(@lanes?)}
+                aria-controls="atlas-timeline-lanes"
+                disabled={@show_all}
+                title={
+                  if(@lanes?,
+                    do: "Collapse into one bar",
+                    else: "Fan out into one bar per source"
+                  )
+                }
+              >
+                <span aria-hidden="true">
+                  <%= if @lanes? do %>
+                    ▾
+                  <% else %>
+                    ▸
+                  <% end %>
+                </span>
+                By source
+              </button>
+
+              <div
+                id="atlas-timeline-mode"
+                class="atlas-range__mode"
+                role="radiogroup"
+                aria-label="Show events in or out of the range"
+              >
+                <button
+                  type="button"
+                  id="atlas-timeline-mode-in"
+                  role="radio"
+                  phx-click="range_mode"
+                  phx-value-mode="in"
+                  aria-checked={to_string(not @range_outside?)}
+                  disabled={@show_all || !(@range_from || @range_to)}
+                >
+                  In range
+                </button>
+                <button
+                  type="button"
+                  id="atlas-timeline-mode-out"
+                  role="radio"
+                  phx-click="range_mode"
+                  phx-value-mode="out"
+                  aria-checked={to_string(@range_outside?)}
+                  disabled={@show_all || !(@range_from || @range_to)}
+                  title={
+                    if(@range_from || @range_to,
+                      do: "Show what happened outside this window",
+                      else: "Set a range first — with no window there is no outside."
+                    )
+                  }
+                >
+                  Out of range
+                </button>
+              </div>
+
+              <%= if @lanes? do %>
+                <ol
+                  id="atlas-timeline-lanes"
+                  class="atlas-range__lanes"
+                  aria-label="Activities by source"
+                >
+                  <%= for {id, source} <- Enum.sort_by(@sources, fn {_, s} -> s.title end), id in @shown_sources do %>
+                    <li
+                      id={"atlas-timeline-lane-#{id}"}
+                      class="atlas-range__lane"
+                    >
+                      <span class="atlas-range__lane-label">
+                        {source.title}
+                        <span class="atlas-range__lane-n">
+                          {@range_dots.lanes
+                          |> Map.get(id, [])
+                          |> Enum.map(& &1.count)
+                          |> Enum.sum()}
+                        </span>
+                      </span>
+                      <span class="atlas-range__lane-line">
+                        <AtlasComponents.range_dots dots={Map.get(@range_dots.lanes, id, [])} />
+                      </span>
+                    </li>
+                  <% end %>
+                </ol>
+              <% end %>
+            </div>
+
+            <%!-- Marks: real time horizontally, simultaneity stacked vertically.
+      No horizontal scale separates 12 events that share a timestamp, so the
+      band stops trying and stacks them instead. --%>
+            <%= if @timeline.marks != [] do %>
+              <div
+                id="atlas-timeline-marks"
+                class="atlas-marks"
+                style={"--lanes: #{@timeline.lanes}"}
+                aria-label="Events positioned by time"
+              >
+                <%= for tick <- timeline_ticks(@timeline) do %>
+                  <span
+                    class="atlas-marks__tick"
+                    style={"left: #{tick.x}%"}
+                    aria-hidden="true"
+                  >
+                    <span class="atlas-marks__tick-label">{tick.label}</span>
+                  </span>
+                <% end %>
+
+                <%= for mark <- @timeline.marks do %>
+                  <button
+                    type="button"
+                    phx-click="select_event"
+                    phx-value-id={mark.event_id}
+                    class={[
+                      "atlas-marks__mark",
+                      truth_classes(mark.event.truth_state),
+                      @selected && mark.event_id == @selected.event_id && "is-selected"
+                    ]}
+                    style={"left: #{mark.x}%; --lane: #{mark.lane}"}
+                    title={"#{date(mark.time)} · #{Event.title(mark.event)}"}
+                    aria-label={"#{date(mark.time)}: #{Event.title(mark.event)}"}
+                  ></button>
+                <% end %>
+
+                <%= if @timeline.overflow > 0 do %>
+                  <p class="atlas-marks__overflow">
+                    +{@timeline.overflow} more at these times
+                  </p>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </AtlasComponents.accordion>
+
+        <%!-- The Position panel (a scrubber over the selected range) sat here.
+        It is unmounted, not deleted: `AtlasComponents.position_scrubber/1`.
+        Position is still set from the activity list, the marks band, and
+        Prev / Next, and still read from the one readout above. --%>
+      </section>
+    </div>
+
+    <div class="grid gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[17rem_22rem_minmax(0,1fr)] lg:items-start">
+      <%!-- ============ Column 1: the event log ============ --%>
+      <%!-- space-y-6 would put 1.5rem above the heading via its first child;
+      the column holds one block now, so it needs no vertical rhythm of its
+      own. --%>
+      <div>
+        <div>
+          <div class="atlas-activity__head">
+            <h2 class="text-sm font-semibold">
+              Activity
+            </h2>
+            <%!-- A density control, not a view switch. It was labelled "show
+            on timeline", which claimed a relationship to the marks band above
+            that does not exist: the band is always shown, and this only sets
+            how much each row says. --%>
+            <button
+              type="button"
+              id="atlas-activity-toggle"
+              phx-click="toggle_density"
+              class="atlas-term"
+              aria-pressed={to_string(@dense?)}
+              title={
+                if @dense?,
+                  do: "Show source and affected count on each row",
+                  else: "Show titles and dates only"
+              }
+            >
+              <%= if @dense? do %>
+                more detail
+              <% else %>
+                less detail
+              <% end %>
+            </button>
+          </div>
+
+          <%!-- The source filter decides what this list queries, so a compact
+          copy of it sits on the list itself. The full row above says what each
+          source IS; this one only says which are feeding the list right now.
+          Checked means included, so "all checked" and "no filter" are the same
+          state, and the last checked source cannot be unchecked — an empty
+          list would read as "nothing happened" rather than "nothing selected". --%>
+          <div
+            id="atlas-activity-sources"
+            class="atlas-srcfilter"
+            role="group"
+            aria-labelledby="atlas-activity-sources-label"
+          >
+            <p class="atlas-srcfilter__head">
+              <span id="atlas-activity-sources-label">
+                Sources
+              </span>
+              <span
+                id="atlas-activity-sources-count"
+                class="atlas-srcfilter__count"
+              >
+                {length(@shown_sources)} of {map_size(@sources)}
+              </span>
+              <%= if @source_filter != [] do %>
+                <button
+                  type="button"
+                  id="atlas-activity-sources-all"
+                  phx-click="clear_sources"
+                  class="atlas-sourcenav__clear"
+                >
+                  all
+                </button>
+              <% end %>
+            </p>
+            <%= for {id, source} <- Enum.sort_by(@sources, fn {_, s} -> s.title end) do %>
+              <button
+                type="button"
+                id={"atlas-activity-source-#{id}"}
+                role="checkbox"
+                phx-click="check_source"
+                phx-value-source={id}
+                aria-checked={to_string(id in @shown_sources)}
+                aria-disabled={to_string(@shown_sources == [id])}
+                title={
+                  if(@shown_sources == [id],
+                    do: "At least one source stays on.",
+                    else: source.title
+                  )
+                }
+                class="atlas-srcfilter__item"
+              >
+                <span
+                  class="atlas-srcfilter__box"
+                  aria-hidden="true"
+                ></span>
+                <span class="atlas-srcfilter__title">
+                  {source.title}
+                </span>
+                <span class="atlas-srcfilter__n">
+                  {Map.get(@source_counts, id, 0)}
+                </span>
+              </button>
+            <% end %>
+          </div>
+
+          <%!-- Reference material, not a control — so it sits beside the thing
+          it explains. Every row below carries a truth-state chip; this is the
+          key to those chips, not a filter on the page. --%>
+          <p class="atlas-activity__key">
+            <button
+              type="button"
+              id="atlas-legend-open"
+              phx-click="show_legend"
+              class="atlas-legend-button"
+              aria-haspopup="dialog"
+            >
+              <span aria-hidden="true">ⓘ</span> Truth states
+            </button>
+          </p>
+
+          <ol
+            id="atlas-activity"
+            class={["space-y-1", @dense? && "atlas-activity--compact"]}
+            aria-label="Activity, in source order"
+          >
+            <%= for {event, i} <- Enum.with_index(@events) do %>
+              <li
+                id={"atlas-activity-#{i}"}
+                data-source={event.source_id}
+              >
                 <button
                   type="button"
                   phx-click="select_event"
-                  phx-value-id={mark.event_id}
+                  phx-value-id={event.event_id}
+                  aria-current={
+                    if @selected && event.event_id == @selected.event_id, do: "true", else: nil
+                  }
                   class={[
-                    "atlas-marks__mark",
-                    truth_classes(mark.event.truth_state),
-                    @selected && mark.event_id == @selected.event_id && "is-selected"
+                    "atlas-activity__item",
+                    @selected && event.event_id == @selected.event_id && "is-selected",
+                    @selected_index && i > @selected_index && "is-future"
                   ]}
-                  style={"left: #{mark.x}%; --lane: #{mark.lane}"}
-                  title={"#{date(mark.time)} · #{Event.title(mark.event)}"}
-                  aria-label={"#{date(mark.time)}: #{Event.title(mark.event)}"}
-                ></button>
-              <% end %>
-
-              <%= if @timeline.overflow > 0 do %>
-                <p class="atlas-marks__overflow">
-                  +{@timeline.overflow} more at these times
-                </p>
-              <% end %>
-            </div>
-          <% end %>
-        <% end %>
-      </div>
-
-      <%!-- Collapsed, the timeline states what it is filtering to, in the same
-      register as the projection and source rows above. --%>
-      <p
-        id="atlas-timeline-summary"
-        class="atlas-collapsed"
-        hidden={@timeline_open?}
-      >
-        <%= if @show_all do %>
-          All {length(@all_events)} events.
-        <% else %>
-          {length(@events)} of {length(@all_events)} events ·
-          <%= if @range_from || @range_to do %>
-            {range_label(@all_events, @range_from, @range_to)}
-          <% else %>
-            full range
-          <% end %>
-        <% end %>
-      </p>
-
-      <%!-- Scrub within the selected range. --%>
-      <div class="atlas-timeline__scrub-head">
-        <button
-          type="button"
-          id="atlas-scrubber-collapse"
-          phx-click="toggle_scrubber"
-          class="atlas-collapse"
-          aria-expanded={to_string(@scrubber_open?)}
-          aria-controls="atlas-scrubber"
-          title={if @scrubber_open?, do: "Collapse scrubber", else: "Expand scrubber"}
-        >
-          <span aria-hidden="true">
-            <%= if @scrubber_open? do %>
-              ▾
-            <% else %>
-              ▸
+                >
+                  <span class="flex items-center justify-between gap-2">
+                    <time
+                      datetime={stamp(Event.effective_time(event))}
+                      class="font-mono text-[11px] text-slate-500"
+                    >
+                      {date(Event.effective_time(event))}
+                    </time>
+                    <span class={[
+                      "inline-flex items-center gap-1 rounded border px-1 text-[10px]",
+                      truth_classes(event.truth_state)
+                    ]}>
+                      <span aria-hidden="true">
+                        {truth_glyph(event.truth_state)}
+                      </span>
+                      {event.truth_state}
+                    </span>
+                  </span>
+                  <span class="mt-0.5 block font-medium text-slate-900">
+                    <%= if Event.annotation?(event) do %>
+                      <span class="rounded border border-slate-300 px-1 text-[10px] uppercase">
+                        annotation
+                      </span>
+                    <% end %>
+                    {Event.title(event)}
+                  </span>
+                  <span class="block text-slate-500">
+                    {source_title(@sources, event.source_id)} · affects {length(
+                      Event.affected_refs(event)
+                    )}
+                  </span>
+                </button>
+              </li>
             <% end %>
-          </span>
-          <span class="sr-only">
-            {if @scrubber_open?, do: "Collapse scrubber", else: "Expand scrubber"}
-          </span>
-        </button>
-
-        <%!-- Collapsed, the position still reads as a line of text. --%>
-        <p
-          id="atlas-scrubber-summary"
-          class="atlas-collapsed"
-          hidden={@scrubber_open?}
-        >
-          <%= if @selected do %>
-            Event {(@selected_index || 0) + 1} of {length(@events)} · {date(
-              Event.effective_time(@selected)
-            )}
-          <% else %>
-            No events match the current filter.
-          <% end %>
-        </p>
+          </ol>
+        </div>
       </div>
 
-      <form
-        phx-change="scrub"
-        id="atlas-scrubber"
-        class="atlas-timeline__scrub"
-        hidden={not @scrubber_open?}
-      >
-        <label
-          for="atlas-scrubber-input"
-          class="sr-only"
-        >
-          Timeline scrubber
-        </label>
-        <input
-          id="atlas-scrubber-input"
-          type="range"
-          name="index"
-          min="0"
-          max={max(length(@events) - 1, 0)}
-          value={@selected_index || 0}
-          aria-valuetext={
-            @selected && "#{date(Event.effective_time(@selected))}: #{Event.title(@selected)}"
-          }
-        />
-        <p class="atlas-timeline__position">
-          <%= if @selected do %>
-            {(@selected_index || 0) + 1} of {length(@events)} · {date(
-              Event.effective_time(@selected)
-            )}
-          <% else %>
-            No events match the current filter.
-          <% end %>
-        </p>
-      </form>
-    </section>
-
-    <div class="grid gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[22rem_15rem_minmax(0,1fr)] lg:items-start">
-      <%!-- ============ Column 1: entity / selected-event detail ============ --%>
+      <%!-- ============ Column 2: entity / selected-event detail ============ --%>
       <section
         id="atlas-reader"
         class="space-y-4"
@@ -513,59 +662,6 @@ would be a good way to break it silently. --%>
               <p class="mt-1 text-sm text-slate-700">
                 {@selected.payload["body"]}
               </p>
-            <% end %>
-
-            <%!-- The field labels below explain their own vocabulary; this
-            answers the different question of what THIS record means. --%>
-            <%= if @explain_available? do %>
-              <div class="atlas-explain">
-                <%= case @explain_event do %>
-                  <% {_id, :loading} -> %>
-                    <p
-                      class="atlas-explain__status"
-                      aria-live="polite"
-                    >
-                      Reading the record…
-                    </p>
-                  <% {_id, text} -> %>
-                    <div
-                      id="atlas-explain-result"
-                      class="atlas-explain__result"
-                      aria-live="polite"
-                    >
-                      <p class="atlas-explain__text">{text}</p>
-                      <p class="atlas-explain__caveat">
-                        Written by a language model from the record above. It can be wrong —
-                        the record is the source, not this.
-                        <button
-                          type="button"
-                          phx-click="hide_explain_event"
-                          class="atlas-term"
-                        >
-                          Hide
-                        </button>
-                      </p>
-                    </div>
-                  <% _ -> %>
-                    <button
-                      type="button"
-                      id="atlas-explain-event"
-                      phx-click="explain_event"
-                      class="atlas-explain__button"
-                    >
-                      Explain this record
-                    </button>
-                <% end %>
-
-                <%= if @explain_error do %>
-                  <p
-                    class="atlas-explain__status"
-                    role="alert"
-                  >
-                    {@explain_error}
-                  </p>
-                <% end %>
-              </div>
             <% end %>
 
             <dl class="atlas-fields">
@@ -666,7 +762,7 @@ would be a good way to break it silently. --%>
               <dd>
                 {@selected.stream_id} · seq {sequence(@selected.sequence)}
               </dd>
-              <%= if @selected.actor_ref do %>
+              <%= if @selected.actor do %>
                 <dt class="text-slate-500">
                   Actor
                 </dt>
@@ -674,10 +770,10 @@ would be a good way to break it silently. --%>
                   <button
                     type="button"
                     phx-click="focus_entity"
-                    phx-value-ref={@selected.actor_ref}
+                    phx-value-ref={@selected.actor}
                     class="text-blue-700 underline underline-offset-2"
                   >
-                    {entity_label(@read_model, @selected.actor_ref)}
+                    {entity_label(@read_model, @selected.actor)}
                   </button>
                 </dd>
               <% end %>
@@ -698,7 +794,7 @@ would be a good way to break it silently. --%>
                   class="flex flex-wrap gap-1"
                   role="list"
                 >
-                  <%= for ref <- @selected.subject_refs do %>
+                  <%= for ref <- @selected.object do %>
                     <li>
                       <%!-- An affected entity is a linked object: its kind
                       carries a schema.org type, so a reader (or a consumer)
@@ -750,7 +846,7 @@ would be a good way to break it silently. --%>
                           >
                             {URI.parse(v).host}<span class="atlas-prov__path">{URI.parse(v).path}</span>
                           </a>
-                        <% k in ["content_hash", "txid"] -> %>
+                        <% digest_key?(k) -> %>
                           <%!-- An opaque digest: what a reader compares is the
                           head and tail, and the whole value stays available. --%>
                           <code
@@ -811,9 +907,9 @@ would be a good way to break it silently. --%>
                     rel.event_id == @selected.event_id && "border-blue-600 bg-blue-50",
                     rel.event_id != @selected.event_id && "border-slate-200"
                   ]}>
-                    <strong>{entity_label(@read_model, rel.from)}</strong>
-                    <em>{rel.verb}</em>
-                    <strong>{entity_label(@read_model, rel.to)}</strong>
+                    <strong>{entity_label(@read_model, rel.subject)}</strong>
+                    <em>{rel.relationship}</em>
+                    <strong>{entity_label(@read_model, rel.object)}</strong>
                     <span class={[
                       "ml-1 inline-flex items-center gap-1 rounded border px-1",
                       truth_classes(rel.truth_state)
@@ -839,6 +935,91 @@ would be a good way to break it silently. --%>
                   </li>
                 <% end %>
               </ul>
+            <% end %>
+
+            <%!-- The field labels above explain their own vocabulary; this
+            answers the different question of what THIS record means. It sits
+            after the record and directly above annotation: read the fields,
+            ask what they add up to, then respond. --%>
+            <%= if @explain_available? do %>
+              <div class="atlas-explain">
+                <%= case @explain_event do %>
+                  <% {_id, :loading} -> %>
+                    <%!-- A skeleton rather than a spinner: it occupies the
+                    space the answer will fill, so the card does not jump when
+                    text arrives, and the shimmer shows work is still moving.
+                    Generation was measured at roughly 3-8 seconds. --%>
+                    <div
+                      id="atlas-explain-loading"
+                      class="atlas-explain__loading"
+                      role="status"
+                      aria-live="polite"
+                      aria-busy="true"
+                    >
+                      <span class="sr-only">Reading the record…</span>
+                      <span
+                        class="atlas-explain__skeleton"
+                        aria-hidden="true"
+                      ></span>
+                      <span
+                        class="atlas-explain__skeleton"
+                        aria-hidden="true"
+                      ></span>
+                      <span
+                        class="atlas-explain__skeleton is-short"
+                        aria-hidden="true"
+                      ></span>
+                      <p class="atlas-explain__loading-note">
+                        Reading the record
+                        <button
+                          type="button"
+                          phx-click="hide_explain_event"
+                          class="atlas-term"
+                        >
+                          Cancel
+                        </button>
+                      </p>
+                    </div>
+                  <% {_id, text} -> %>
+                    <div
+                      id="atlas-explain-result"
+                      class="atlas-explain__result"
+                      aria-live="polite"
+                    >
+                      <p class="atlas-explain__text">{text}</p>
+                      <p class="atlas-explain__caveat">
+                        Written by a language model from the record above. It can be wrong —
+                        the record is the source, not this.
+                        <button
+                          type="button"
+                          phx-click="hide_explain_event"
+                          class="atlas-term"
+                        >
+                          Hide
+                        </button>
+                      </p>
+                    </div>
+                  <% _ -> %>
+                    <button
+                      type="button"
+                      id="atlas-explain-event"
+                      phx-click="explain_event"
+                      class="atlas-explain__button"
+                      phx-disable-with="Reading…"
+                    >
+                      Explain this record
+                    </button>
+                <% end %>
+
+                <%= if @explain_error do %>
+                  <p
+                    class="atlas-explain__status"
+                    role="alert"
+                  >
+                    {@explain_error}
+                  </p>
+                <% end %>
+              </div>
             <% end %>
 
             <%= if @annotations_for_selected != [] do %>
@@ -1016,97 +1197,10 @@ would be a good way to break it silently. --%>
         <% end %>
       </section>
 
-      <%!-- ============ Column 2: the event log ============ --%>
-      <div class="space-y-6">
-        <%!-- The legend that lived here now opens from the nav's info button;
-        this keeps the column's landmark so ordering stays stable. --%>
-        <aside
-          id="atlas-rail"
-          class="sr-only"
-          aria-label="Legend"
-        >
-          Truth states are documented in the legend dialog.
-        </aside>
-        <div>
-          <div class="atlas-activity__head">
-            <h2 class="text-sm font-semibold">
-              Activity
-            </h2>
-            <button
-              type="button"
-              id="atlas-activity-toggle"
-              phx-click="toggle_marks"
-              class="atlas-term"
-              aria-pressed={to_string(@marks?)}
-            >
-              <%= if @marks? do %>
-                show as list
-              <% else %>
-                show on timeline
-              <% end %>
-            </button>
-          </div>
-          <ol
-            id="atlas-activity"
-            class={["space-y-1", @marks? && "atlas-activity--compact"]}
-            aria-label="Activity, in source order"
-          >
-            <%= for {event, i} <- Enum.with_index(@events) do %>
-              <li id={"atlas-activity-#{i}"}>
-                <button
-                  type="button"
-                  phx-click="select_event"
-                  phx-value-id={event.event_id}
-                  aria-current={
-                    if @selected && event.event_id == @selected.event_id, do: "true", else: nil
-                  }
-                  class={[
-                    "atlas-activity__item",
-                    @selected && event.event_id == @selected.event_id && "is-selected",
-                    @selected_index && i > @selected_index && "is-future"
-                  ]}
-                >
-                  <span class="flex items-center justify-between gap-2">
-                    <time
-                      datetime={stamp(Event.effective_time(event))}
-                      class="font-mono text-[11px] text-slate-500"
-                    >
-                      {date(Event.effective_time(event))}
-                    </time>
-                    <span class={[
-                      "inline-flex items-center gap-1 rounded border px-1 text-[10px]",
-                      truth_classes(event.truth_state)
-                    ]}>
-                      <span aria-hidden="true">
-                        {truth_glyph(event.truth_state)}
-                      </span>
-                      {event.truth_state}
-                    </span>
-                  </span>
-                  <span class="mt-0.5 block font-medium text-slate-900">
-                    <%= if Event.annotation?(event) do %>
-                      <span class="rounded border border-slate-300 px-1 text-[10px] uppercase">
-                        annotation
-                      </span>
-                    <% end %>
-                    {Event.title(event)}
-                  </span>
-                  <span class="block text-slate-500">
-                    {source_title(@sources, event.source_id)} · affects {length(
-                      Event.affected_refs(event)
-                    )}
-                  </span>
-                </button>
-              </li>
-            <% end %>
-          </ol>
-        </div>
-      </div>
-
       <%!-- ============ Column 3: the canvas, filling remaining width ============ --%>
       <section
         id="atlas-canvas"
-        class="rounded-lg border border-slate-200 bg-white p-3 lg:sticky lg:top-4"
+        class="lg:sticky lg:top-4"
         aria-labelledby="atlas-canvas-title"
       >
         <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
@@ -1119,88 +1213,102 @@ would be a good way to break it silently. --%>
               · {map_size(@read_model.entities)} entities · {length(@read_model.relationships)} relationships
             </span>
           </h2>
-
-          <%!-- A map positions by real coordinates, so an entity without them
-        has nowhere to go. The count says how much of the record is on the map
-        rather than implying these dots are all of it. --%>
-          <%= if @geo.count > 0 do %>
-            <div
-              id="atlas-map"
-              class="atlas-map"
-              aria-label="Entities with known locations"
-            >
-              <svg
-                class="atlas-map__plane"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                <%= for gx <- [25, 50, 75] do %>
-                  <line
-                    x1={gx}
-                    y1="0"
-                    x2={gx}
-                    y2="100"
-                    class="atlas-map__grid"
-                  />
-                  <line
-                    x1="0"
-                    y1={gx}
-                    x2="100"
-                    y2={gx}
-                    class="atlas-map__grid"
-                  />
-                <% end %>
-              </svg>
-
-              <%= for point <- @geo.points do %>
-                <button
-                  type="button"
-                  phx-click="focus_entity"
-                  phx-value-ref={point.ref}
-                  class={[
-                    "atlas-map__pin",
-                    @entity == point.ref && "is-focused",
-                    point.ref in @affected && "is-affected"
-                  ]}
-                  style={"left: #{point.x}%; top: #{point.y}%"}
-                  title={"#{point.entity.label} · #{point.lat}, #{point.lng}"}
-                >
-                  <span class="atlas-map__label">{point.entity.label}</span>
-                </button>
-              <% end %>
-            </div>
-
-            <p class="atlas-map__caption">
-              {@geo.count} of {@geo.count + @geo.unlocated_count} entities have a known location.
-              <%= if @geo.unlocated_count > 0 do %>
-                <span class="atlas-map__missing">
-                  {@geo.unlocated_count} not shown.
-                </span>
-              <% end %>
-            </p>
-          <% end %>
-          <%= if @entity do %>
-            <p class="text-xs text-slate-600">
-              Focused on <strong>{entity_label(@read_model, @entity)}</strong>
-              <button
-                type="button"
-                phx-click="clear_entity"
-                class="ml-1 text-blue-700 underline underline-offset-2"
-              >
-                clear
-              </button>
-            </p>
-          <% end %>
         </div>
 
-        <%= if @projection == "entity" and is_nil(@read_model[:entity]) do %>
-          <p
-            id="atlas-canvas-empty"
-            class="rounded border border-dashed border-slate-300 p-4 text-sm text-slate-600"
+        <%!-- A real map: Leaflet over OpenStreetMap tiles, so a pin sits on
+        actual ground rather than in an abstract plane. The hook owns the map
+        DOM, so the container is phx-update="ignore" and points are handed over
+        as data rather than re-rendered. --%>
+        <%= if @geo.count > 0 do %>
+          <div
+            id="atlas-map-wrap"
+            class="atlas-map"
           >
-            Pick an entity from the reader (or the list below) to see the events, relationships, and sources around it.
+            <div
+              id="atlas-map"
+              class="atlas-map__canvas"
+              phx-hook=".LeafletMap"
+              phx-update="ignore"
+              data-points={Jason.encode!(map_points(@geo, @entity, @affected))}
+              aria-label="Map of entities with known locations"
+            >
+            </div>
+          </div>
+
+          <p class="atlas-map__caption">
+            {@geo.count} of {@geo.count + @geo.unlocated_count} entities have a known location.
+            <%= if @geo.unlocated_count > 0 do %>
+              <span class="atlas-map__missing">
+                {@geo.unlocated_count} not shown.
+              </span>
+            <% end %>
           </p>
+
+          <script :type={Phoenix.LiveView.ColocatedHook} name=".LeafletMap">
+            // `@` is aliased to assets/ in the esbuild config; a relative path would
+            // resolve from _build, where colocated hooks are extracted.
+            import L from "@/vendor/leaflet/leaflet.js"
+
+            export default {
+              mounted() {
+                this.render()
+              },
+
+              updated() {
+                this.render()
+              },
+
+              render() {
+                const points = JSON.parse(this.el.dataset.points || "[]")
+                if (points.length === 0) return
+
+                if (!this.map) {
+                  this.map = L.map(this.el, { scrollWheelZoom: false, attributionControl: true })
+
+                  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                    maxZoom: 19,
+                    attribution: "&copy; OpenStreetMap contributors"
+                  }).addTo(this.map)
+
+                  this.layer = L.layerGroup().addTo(this.map)
+                }
+
+                this.layer.clearLayers()
+
+                const bounds = []
+
+                points.forEach((p) => {
+                  const classes = ["atlas-pin"]
+                  if (p.focused) classes.push("is-focused")
+                  if (p.affected) classes.push("is-affected")
+
+                  const marker = L.marker([p.lat, p.lng], {
+                    title: p.label,
+                    icon: L.divIcon({
+                      className: classes.join(" "),
+                      html: `<span class="atlas-pin__dot"></span><span class="atlas-pin__label">${p.label}</span>`,
+                      iconSize: null
+                    })
+                  })
+
+                  marker.on("click", () => this.pushEvent("focus_entity", { ref: p.ref }))
+                  marker.addTo(this.layer)
+                  bounds.push([p.lat, p.lng])
+                })
+
+                // Fit once; refitting on every update would yank the view out
+                // from under someone who has panned.
+                if (!this.fitted) {
+                  this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
+                  this.fitted = true
+                }
+              },
+
+              destroyed() {
+                if (this.map) { this.map.remove(); this.map = null }
+              }
+            }
+          </script>
         <% end %>
 
         <%= if @projection == "provenance" do %>
@@ -1227,102 +1335,109 @@ would be a good way to break it silently. --%>
           The same information is available as lists in the reader.
         </p>
 
-        <svg
-          id="atlas-svg"
-          viewBox="0 0 800 600"
-          class="h-auto w-full max-w-full"
-          role="img"
-          aria-label={"Topology of #{map_size(@read_model.entities)} entities and #{length(@read_model.relationships)} relationships"}
-          data-projection={@projection}
-          data-selected={@selected && @selected.event_id}
+        <%!-- The column itself is unframed; each instrument in it carries its
+        own border, so the map and the graph read as two things, not one box. --%>
+        <div
+          id="atlas-graph"
+          class="atlas-graph"
         >
-          <g id="atlas-svg-relationships">
-            <%= for rel <- @read_model.relationships do %>
-              <% from = Map.get(@read_model.positions, rel.from) %>
-              <% to = Map.get(@read_model.positions, rel.to) %>
-              <%= if from && to do %>
-                <line
-                  x1={from.x}
-                  y1={from.y}
-                  x2={to.x}
-                  y2={to.y}
-                  stroke={truth_stroke(rel.truth_state)}
-                  stroke-width={
-                    if @selected && rel.event_id == @selected.event_id, do: "4", else: "1.5"
-                  }
-                  stroke-dasharray={
-                    if rel.truth_state in ["proposed", "reported"], do: "6 4", else: nil
-                  }
-                  opacity={
-                    if @selected && rel.event_id == @selected.event_id, do: "1", else: "0.55"
-                  }
-                  data-event={rel.event_id}
-                  data-truth={rel.truth_state}
-                  class="motion-safe:transition-all"
-                >
-                  <title>
-                    {entity_label(@read_model, rel.from)} {rel.verb} {entity_label(
-                      @read_model,
-                      rel.to
-                    )} ({rel.truth_state})
-                  </title>
-                </line>
+          <svg
+            id="atlas-svg"
+            viewBox="0 0 800 600"
+            class="h-auto w-full max-w-full"
+            role="img"
+            aria-label={"Topology of #{map_size(@read_model.entities)} entities and #{length(@read_model.relationships)} relationships"}
+            data-projection={@projection}
+            data-selected={@selected && @selected.event_id}
+          >
+            <g id="atlas-svg-relationships">
+              <%= for rel <- @read_model.relationships do %>
+                <% from = Map.get(@read_model.positions, rel.subject) %>
+                <% to = Map.get(@read_model.positions, rel.object) %>
+                <%= if from && to do %>
+                  <line
+                    x1={from.x}
+                    y1={from.y}
+                    x2={to.x}
+                    y2={to.y}
+                    stroke={truth_stroke(rel.truth_state)}
+                    stroke-width={
+                      if @selected && rel.event_id == @selected.event_id, do: "4", else: "1.5"
+                    }
+                    stroke-dasharray={
+                      if rel.truth_state in ["proposed", "reported"], do: "6 4", else: nil
+                    }
+                    opacity={
+                      if @selected && rel.event_id == @selected.event_id, do: "1", else: "0.55"
+                    }
+                    data-event={rel.event_id}
+                    data-truth={rel.truth_state}
+                    class="motion-safe:transition-all"
+                  >
+                    <title>
+                      {entity_label(@read_model, rel.subject)} {rel.relationship} {entity_label(
+                        @read_model,
+                        rel.object
+                      )} ({rel.truth_state})
+                    </title>
+                  </line>
+                <% end %>
               <% end %>
-            <% end %>
-          </g>
-          <g id="atlas-svg-entities">
-            <%= for {ref, entity} <- Enum.sort_by(@read_model.entities, fn {ref, _} -> ref end) do %>
-              <% pos = Map.fetch!(@read_model.positions, ref) %>
-              <% affected? = ref in @affected %>
-              <% focused? = ref == @entity %>
-              <g
-                phx-click="focus_entity"
-                phx-value-ref={ref}
-                class="cursor-pointer"
-                data-ref={ref}
-                data-affected={to_string(affected?)}
-                role="button"
-                tabindex="-1"
-              >
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={if affected? or focused?, do: 16, else: 10}
-                  fill={if affected?, do: "#1d4ed8", else: "#ffffff"}
-                  stroke={if focused?, do: "#b45309", else: "#1e293b"}
-                  stroke-width={if affected? or focused?, do: "3", else: "1.5"}
-                  class="motion-safe:transition-all"
+            </g>
+            <g id="atlas-svg-entities">
+              <%= for {ref, entity} <- Enum.sort_by(@read_model.entities, fn {ref, _} -> ref end) do %>
+                <% pos = Map.fetch!(@read_model.positions, ref) %>
+                <% affected? = ref in @affected %>
+                <% focused? = ref == @entity %>
+                <g
+                  phx-click="focus_entity"
+                  phx-value-ref={ref}
+                  class="cursor-pointer"
+                  data-ref={ref}
+                  data-affected={to_string(affected?)}
+                  role="button"
+                  tabindex="-1"
                 >
-                  <title>
-                    {entity.label} ({entity.kind}) — {length(entity.event_ids)} event(s)
-                  </title>
-                </circle>
-                <text
-                  x={pos.x}
-                  y={pos.y + if pos.y > 300, do: 30, else: -22}
-                  text-anchor="middle"
-                  font-size="12"
-                  fill="#0f172a"
-                  font-weight={if affected?, do: "600", else: "400"}
-                >
-                  {entity.label}
-                </text>
-                <%= if affected? do %>
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={if affected? or focused?, do: 16, else: 10}
+                    fill={if affected?, do: "#1d4ed8", else: "#ffffff"}
+                    stroke={if focused?, do: "#b45309", else: "#1e293b"}
+                    stroke-width={if affected? or focused?, do: "3", else: "1.5"}
+                    class="motion-safe:transition-all"
+                  >
+                    <title>
+                      {entity.label} ({entity.kind}) — {length(entity.event_ids)} event(s)
+                    </title>
+                  </circle>
                   <text
                     x={pos.x}
-                    y={pos.y + 4}
+                    y={pos.y + if pos.y > 300, do: 30, else: -22}
                     text-anchor="middle"
-                    font-size="10"
-                    fill="#ffffff"
-                    aria-hidden="true"
+                    font-size="12"
+                    fill="#0f172a"
+                    font-weight={if affected?, do: "600", else: "400"}
                   >
-                    ●
+                    {entity.label}
                   </text>
-                <% end %>
-              </g>
-            <% end %>
-          </g>
-        </svg>
+                  <%= if affected? do %>
+                    <text
+                      x={pos.x}
+                      y={pos.y + 4}
+                      text-anchor="middle"
+                      font-size="10"
+                      fill="#ffffff"
+                      aria-hidden="true"
+                    >
+                      ●
+                    </text>
+                  <% end %>
+                </g>
+              <% end %>
+            </g>
+          </svg>
+        </div>
 
         <details class="mt-2 text-xs">
           <summary class="cursor-pointer text-slate-600">
@@ -1377,6 +1492,7 @@ would be a good way to break it silently. --%>
           aria-hidden="true"
         >
         </div>
+
         <div
           class="atlas-modal__panel atlas-modal__panel--narrow"
           role="dialog"

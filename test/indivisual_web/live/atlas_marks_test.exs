@@ -47,31 +47,52 @@ defmodule IndivisualWeb.AtlasMarksTest do
            )
   end
 
-  describe "the activity toggle" do
-    test "switches between list and timeline framing", %{conn: conn} do
+  describe "the activity density toggle" do
+    # It was labelled "show on timeline", which implied a relationship to the
+    # marks band above. There is none: the band always renders. This only sets
+    # how much each row says.
+    test "switches row density", %{conn: conn} do
       {:ok, view, _} = live(conn, ~p"/atlas")
 
       assert has_element?(view, ~s(#atlas-activity-toggle[aria-pressed="false"]))
 
       view |> element("#atlas-activity-toggle") |> render_click()
 
-      assert assert_patch(view) =~ "marks=1"
+      assert assert_patch(view) =~ "dense=1"
       assert has_element?(view, ~s(#atlas-activity-toggle[aria-pressed="true"]))
+      assert has_element?(view, ".atlas-activity--compact")
+    end
+
+    test "does not claim to move anything to the timeline", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas")
+
+      label = view |> element("#atlas-activity-toggle") |> render()
+
+      refute label =~ "timeline",
+             "the label must not imply a relationship to the marks band"
+    end
+
+    test "the marks band renders regardless of the toggle", %{conn: conn} do
+      {:ok, plain, _} = live(conn, ~p"/atlas")
+      {:ok, dense, _} = live(conn, ~p"/atlas?dense=1")
+
+      assert has_element?(plain, "#atlas-timeline-marks")
+      assert has_element?(dense, "#atlas-timeline-marks")
     end
 
     test "the choice round-trips through the URL", %{conn: conn} do
-      {:ok, view, _} = live(conn, ~p"/atlas?marks=1")
+      {:ok, view, _} = live(conn, ~p"/atlas?dense=1")
 
       assert has_element?(view, ~s(#atlas-activity-toggle[aria-pressed="true"]))
       assert has_element?(view, ".atlas-activity--compact")
     end
 
-    test "toggling back restores the full list", %{conn: conn} do
-      {:ok, view, _} = live(conn, ~p"/atlas?marks=1")
+    test "toggling back restores the full rows", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/atlas?dense=1")
 
       view |> element("#atlas-activity-toggle") |> render_click()
 
-      refute assert_patch(view) =~ "marks="
+      refute assert_patch(view) =~ "dense="
       refute has_element?(view, ".atlas-activity--compact")
     end
   end

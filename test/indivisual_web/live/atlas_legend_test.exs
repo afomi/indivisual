@@ -18,6 +18,17 @@ defmodule IndivisualWeb.AtlasLegendTest do
     refute has_element?(view, "#atlas-legend"), "the legend should be closed by default"
   end
 
+  test "the button sits with the activity list it explains, not in the projection row",
+       %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/atlas")
+
+    refute has_element?(view, "#atlas-projection-nav #atlas-legend-open")
+
+    at = fn id -> html |> :binary.match(~s(id="#{id}")) |> elem(0) end
+    assert at.("atlas-activity-sources") < at.("atlas-legend-open")
+    assert at.("atlas-legend-open") < at.("atlas-activity")
+  end
+
   test "opening shows a dialog documenting every truth state", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/atlas")
 

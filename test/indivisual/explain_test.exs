@@ -28,7 +28,7 @@ defmodule Indivisual.ExplainTest do
           "event_type" => "civic.plan.adopted",
           "observed_at" => ~U[2026-09-10 16:00:00Z],
           "occurred_at" => ~U[2024-04-09 00:00:00Z],
-          "subject_refs" => ["plan:eltsp"],
+          "object" => ["plan:eltsp"],
           "provenance" => %{"content_hash" => "hash-a"},
           "truth_state" => "observed",
           "payload" => %{"title" => "A plan was adopted"}
@@ -77,7 +77,7 @@ defmodule Indivisual.ExplainTest do
     test "includes other records touching the same entities" do
       subject = event()
       related = event(%{"payload" => %{"title" => "An earlier decision"}})
-      unrelated = event(%{"subject_refs" => ["plan:other"]})
+      unrelated = event(%{"object" => ["plan:other"]})
 
       prompt = Explain.prompt_for(subject, [subject, related, unrelated])
 

@@ -66,8 +66,8 @@ defmodule Indivisual.Atlas.Sources.Annotations do
       "event_type" => Event.annotation_prefix() <> "added",
       "occurred_at" => now,
       "observed_at" => now,
-      "actor_ref" => "person:#{author}",
-      "subject_refs" => Event.affected_refs(about),
+      "actor" => "person:#{author}",
+      "object" => Event.affected_refs(about),
       "payload" => %{
         "title" => "#{String.capitalize(kind)} on: #{Event.title(about)}",
         "body" => body,
