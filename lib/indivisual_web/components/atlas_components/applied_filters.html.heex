@@ -1,0 +1,43 @@
+<div
+  id={@id}
+  class="atlas-applied"
+  role="status"
+  aria-label="Filters applied to the activity list"
+>
+  <span class="atlas-applied__label">
+    Filters
+  </span>
+  <%!-- Beside the label, because a link to this view IS these filters: the
+  thing you would send someone is the query they describe. --%>
+  <span
+    :if={@action != []}
+    class="atlas-applied__action"
+  >
+    {render_slot(@action)}
+  </span>
+  <%!-- With nothing applied there is nothing to list, and the row says so by
+  being just its label. "none" and an "N of M" sat here; both were noise — the
+  count is the timeline's readout, which is always on screen. --%>
+  <ul
+    :if={@filters != []}
+    class="atlas-applied__list"
+    role="list"
+  >
+    <li :for={f <- @filters}>
+      <%!-- A filter is dismissed where it is named. Each ✕ sends its own
+      host event, which goes through the same patch as any other change —
+      so a linked tab hears it like everything else. --%>
+      <.filter_chip
+        id={"#{@id}-#{f.id}"}
+        filter={f.id}
+        label={f.label}
+        value={f.value}
+        title={f[:title]}
+        kind={f[:kind]}
+        clear={f[:clear]}
+        clear_label={f[:clear_label] || "Remove this filter"}
+        inline
+      />
+    </li>
+  </ul>
+</div>

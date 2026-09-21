@@ -26,10 +26,20 @@ defmodule IndivisualWeb.Router do
     # (see config/prod.exs) or the target group never goes healthy.
     get "/healthz", PageController, :healthz
 
-    # The two features indivisual is focused on.
-    get "/topo", PageController, :topo
-    get "/topo/:space_slug", PageController, :topo
-    live "/atlas", AtlasLive, :index
+    # What indivisual is focused on. Public: `/atlas` reads a public record and
+    # works signed out. The live_session only TELLS the LiveView who is signed in
+    # (it never redirects), so a signed-in reader can keep their own Spacetime
+    # modes; everyone else gets the same page without them.
+    live_session :atlas, on_mount: [{IndivisualWeb.UserAuth, :mount_current_scope}] do
+      live "/atlas", AtlasLive, :index
+      # Capture: one line in, one activity out. Public for now, like the record
+      # it writes to; it becomes the signed-in user's own once logs are scoped.
+      live "/atlas/log", AtlasLogLive, :index
+    end
+
+    # The ideas behind Atlas. Public, like /atlas itself: it explains a page
+    # anyone can already open, so it sits in the same unauthenticated scope.
+    get "/atlas/about", PageController, :atlas_about
   end
 
   # GitHub OAuth — sign-in and the repo grant that backs file persistence.

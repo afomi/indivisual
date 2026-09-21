@@ -27,7 +27,7 @@ defmodule Indivisual.Atlas do
   @doc """
   Reads the feed and materializes a projection in one call.
 
-  Options: `:sources` (filter), `:entity` (focus), `:until` (selected event window).
+  Options: `:sources` (filter), `:entity` (focus).
   Returns `{events, read_model}` so callers can show the source events alongside
   the projection and prove the projection did not alter them.
   """
@@ -41,4 +41,7 @@ defmodule Indivisual.Atlas do
 
   @doc "Annotate an event. See `Indivisual.Atlas.Feed.annotate/3`."
   def annotate(about_id, attrs), do: Feed.annotate(Feed, about_id, attrs)
+
+  @doc "Write a plain note into the record. See `Indivisual.Atlas.Feed.post/3`."
+  def post(attrs, opts \\ []), do: Feed.post(Feed, attrs, opts)
 end

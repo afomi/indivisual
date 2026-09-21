@@ -1,0 +1,175 @@
+<section
+  id={"#{@id}-wrap"}
+  class={["atlas-scatter atlas-scene", "atlas-scene--#{@variant}"]}
+  style={@variant == "strip" && @band_style}
+  aria-labelledby={@title != [] && "#{@id}-title"}
+  aria-label={@title == [] && @label}
+>
+  <%= if @title != [] or @layouts != [] or @tools != [] do %>
+    <div class="atlas-scene__head">
+      <%= if @title != [] do %>
+        <h2
+          id={"#{@id}-title"}
+          class="text-sm font-semibold"
+        >
+          {render_slot(@title)}
+        </h2>
+      <% end %>
+      <%= if @layouts != [] do %>
+        <div
+          id={"#{@id}-layouts"}
+          class="atlas-range__mode"
+          role="radiogroup"
+          aria-label="Layout of the scene"
+        >
+          <%= for layout <- @layouts do %>
+            <button
+              type="button"
+              id={"#{@id}-layout-#{layout.id}"}
+              role="radio"
+              phx-click={@switch}
+              phx-value-layout={layout.id}
+              aria-checked={to_string(layout.id == @layout)}
+              title={layout.says}
+            >
+              {layout.name}
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+      {render_slot(@tools)}
+    </div>
+  <% end %>
+  <%!-- The axes bar: x, y and z as three thin rows along the stage's bottom
+  border, each a dropdown of what that axis carries. A layout is only a choice of three
+  dimensions, so the choice is the reader's to make one axis at a time; picking a
+  preset's three IS that preset. Beside each dropdown is where the axis currently
+  runs (the dates in view, for time) or, failing that, what it means. The bar is
+  a sibling of the stage, never inside it: the hook owns the stage
+  (phx-update="ignore"); this re-renders with the layout. --%>
+  <div
+    id={"#{@id}-frame"}
+    class="atlas-frame"
+  >
+    <div
+      id={@id}
+      class="atlas-scatter__stage"
+      style={@stage_style}
+      phx-hook=".Scene3D"
+      phx-update="ignore"
+      data-variant={@variant}
+      data-kinds={Enum.join(@kinds, ",")}
+      data-layout={@layout}
+      data-fit={@fit}
+      data-layouts={Jason.encode!(@all_layouts)}
+      data-scene={Jason.encode!(@payload)}
+      role="img"
+      aria-label={@label}
+    >
+    </div>
+    <form
+      :if={@variant == "panel" and @axes != []}
+      id={"#{@id}-axes"}
+      class="atlas-axesbar"
+      phx-change={@axes_event}
+    >
+      <%= for {axis, dim} <- Enum.zip(~w(x y z)a, @axes) do %>
+        <div
+          id={"#{@id}-axis-#{axis}"}
+          class={["atlas-axesbar__axis", dim == "none" && "is-unused"]}
+          data-axis={axis}
+          title={"#{axis}: #{axis_says(@dimensions, dim)}"}
+        >
+          <label
+            for={"#{@id}-axis-#{axis}-select"}
+            class="atlas-frame__tag"
+          >
+            {axis}
+          </label>
+          <.input
+            type="select"
+            id={"#{@id}-axis-#{axis}-select"}
+            name={"axes[#{axis}]"}
+            value={dim}
+            options={Enum.map(@dimensions, &{&1.name, &1.id})}
+            aria-label={"What the #{axis} axis shows"}
+            class="atlas-axesbar__select"
+          />
+          <span class="atlas-axesbar__runs">
+            {axis_runs(@dimensions, dim, @axis_bounds[axis])}
+          </span>
+        </div>
+      <% end %>
+    </form>
+  </div>
+  <%= if @caption != [] do %>
+    <%!-- A div, not a p: the caption may hold the axes legend, which is a list. --%>
+    <div
+      id={"#{@id}-caption"}
+      class="atlas-scatter__caption"
+    >
+      {render_slot(@caption)}
+    </div>
+  <% end %>
+
+  <script :type={Phoenix.LiveView.ColocatedHook} name=".Scene3D">
+    // `@` is aliased to assets/ in the esbuild config; three.js resolves from
+    // there, which it would not from _build where this hook is extracted.
+    import { createScene } from "@/js/atlas_scene.js"
+    import { createTimelineStrip } from "@/js/atlas_timeline_strip.js"
+
+    export default {
+      mounted() {
+        this.draw()
+      },
+
+      updated() {
+        this.draw()
+      },
+
+      // One component, two renderers: the volume (every layout of the panel,
+      // Timeline included — it is one scene, so the points travel between
+      // layouts) and the flat band (the sticky strip).
+      build() {
+        const d = this.el.dataset
+        const kinds = (d.kinds || "").split(",").filter(Boolean)
+        const onSelectEvent = (id) => this.pushEvent("select_event", { id })
+
+        this.band = d.variant === "strip"
+        this.view = this.band
+          ? createTimelineStrip(this.el, { onSelectEvent })
+          : createScene(this.el, {
+              kinds: kinds.length ? kinds : null,
+              onSelectEvent,
+              onFocusEntity: (ref) => this.pushEvent("focus_entity", { ref })
+            })
+      },
+
+      draw() {
+        const d = this.el.dataset
+        if (!this.view) this.build()
+        const scene = JSON.parse(d.scene || "{}")
+
+        if (this.band) {
+          this.view.update({ ...scene, fit: d.fit || d.layout })
+          return
+        }
+
+        this.view.update({
+          layout: d.layout,
+          nodes: scene.nodes || [],
+          links: scene.links || [],
+          frames: scene.frames || {},
+          map: scene.map || null,
+          ground: !!scene.ground,
+          icons: scene.icons || {},
+          span: scene.span || null
+        })
+      },
+
+      destroyed() {
+        if (this.view) { this.view.destroy(); this.view = null }
+      }
+    }
+  </script>
+</section>

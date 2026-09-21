@@ -36,6 +36,20 @@ defmodule Indivisual.DataCase do
   Sets up the sandbox based on the test tags.
   """
   def setup_sandbox(tags) do
+    # Tests tagged `:writes_atlas_feed` append to the one shared Atlas feed. The
+    # sandbox rolls the stored row back, but the feed's in-memory log keeps the
+    # event, and every later test would see it. `on_exit` callbacks run last
+    # registered first, so this one — registered BEFORE the sandbox's — runs
+    # AFTER the rollback, and rebuilds the feed from a store that is clean again.
+    # Such tests must not be `async`.
+    if tags[:writes_atlas_feed] do
+      on_exit(fn ->
+        owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Indivisual.Repo, shared: true)
+        Indivisual.Atlas.Feed.reset(Indivisual.Atlas.Feed)
+        Ecto.Adapters.SQL.Sandbox.stop_owner(owner)
+      end)
+    end
+
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Indivisual.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
   end

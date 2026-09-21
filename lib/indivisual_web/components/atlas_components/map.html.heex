@@ -1,0 +1,104 @@
+<%!-- A real map: Leaflet over OpenStreetMap tiles, so a pin sits on
+actual ground rather than in an abstract plane. The hook owns the map
+DOM, so the container is phx-update="ignore" and points are handed over
+as data rather than re-rendered. --%>
+<%= if @geo.count > 0 do %>
+  <div
+    id="atlas-map-wrap"
+    class="atlas-map"
+  >
+    <div
+      id="atlas-map"
+      class="atlas-map__canvas"
+      phx-hook=".LeafletMap"
+      phx-update="ignore"
+      data-points={Jason.encode!(IndivisualWeb.AtlasLive.map_points(@geo, @entity, @affected))}
+      aria-label="Map of entities with known locations"
+    >
+    </div>
+  </div>
+
+  <p class="atlas-map__caption">
+    {@geo.count} of {@geo.count + @geo.unlocated_count} entities have a known location.
+    <%= if @geo.unlocated_count > 0 do %>
+      <span class="atlas-map__missing">
+        {@geo.unlocated_count} not shown.
+      </span>
+    <% end %>
+  </p>
+
+  <script :type={Phoenix.LiveView.ColocatedHook} name=".LeafletMap">
+    // `@` is aliased to assets/ in the esbuild config; a relative path would
+    // resolve from _build, where colocated hooks are extracted.
+    import L from "@/vendor/leaflet/leaflet.js"
+
+    export default {
+      mounted() {
+        this.render()
+      },
+
+      updated() {
+        this.render()
+      },
+
+      render() {
+        const points = JSON.parse(this.el.dataset.points || "[]")
+        if (points.length === 0) return
+
+        if (!this.map) {
+          this.map = L.map(this.el, { scrollWheelZoom: false, attributionControl: true })
+
+          L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap contributors"
+          }).addTo(this.map)
+
+          this.layer = L.layerGroup().addTo(this.map)
+        }
+
+        this.layer.clearLayers()
+
+        const bounds = []
+
+        points.forEach((p) => {
+          const classes = ["atlas-pin"]
+          if (p.focused) classes.push("is-focused")
+          if (p.affected) classes.push("is-affected")
+          if (p.icon) classes.push("atlas-pin--icon", `atlas-pin--${p.kind}`)
+
+          // A place is a pin and a person is a person — the same marks the
+          // graph and the lists use — and anything else stays a dot. The path
+          // comes from the server, so there is one icon set, not two.
+          const rule = p.icon && p.icon.rule ? ` fill-rule="${p.icon.rule}" clip-rule="${p.icon.rule}"` : ""
+          const mark = p.icon
+            ? `<svg class="atlas-pin__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="${p.icon.d}"${rule}/></svg>`
+            : `<span class="atlas-pin__dot"></span>`
+
+          const marker = L.marker([p.lat, p.lng], {
+            title: p.label,
+            icon: L.divIcon({
+              className: classes.join(" "),
+              html: `${mark}<span class="atlas-pin__label">${p.label}</span>`,
+              iconSize: null
+            })
+          })
+
+          marker.on("click", () => this.pushEvent("focus_entity", { ref: p.ref }))
+          marker.addTo(this.layer)
+          bounds.push([p.lat, p.lng])
+        })
+
+        // Fit once; refitting on every update would yank the view out
+        // from under someone who has panned.
+        if (!this.fitted) {
+          this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
+          this.fitted = true
+        }
+      },
+
+      destroyed() {
+        if (this.map) { this.map.remove(); this.map = null }
+      }
+    }
+  </script>
+<% end %>

@@ -1,6 +1,9 @@
 defmodule Indivisual.Atlas.Sources.Annotations do
   @moduledoc """
-  The source adapter for user annotations.
+  The source adapter for what people write into the record: notes and
+  annotations, the two subclasses of `Indivisual.Atlas.Post`. One source for
+  both — they have the same authors and the same standing — under the id the
+  first annotations were stored with.
 
   Annotations are separate events with their own authorship and provenance. They never
   overwrite source events. This adapter registers the annotation source so annotation
@@ -25,9 +28,9 @@ defmodule Indivisual.Atlas.Sources.Annotations do
     [
       %{
         id: @source_id,
-        title: "Atlas annotations",
+        title: "Posts and annotations",
         publisher: "Indivisual users (this session)",
-        kind: "Annotation",
+        kind: "Post",
         status: "in-memory"
       }
     ]
@@ -68,12 +71,18 @@ defmodule Indivisual.Atlas.Sources.Annotations do
       "observed_at" => now,
       "actor" => "person:#{author}",
       "object" => Event.affected_refs(about),
-      "payload" => %{
-        "title" => "#{String.capitalize(kind)} on: #{Event.title(about)}",
-        "body" => body,
-        "kind" => kind,
-        "about_event_id" => about.event_id
-      },
+      "payload" =>
+        Map.merge(
+          %{
+            "title" => "#{String.capitalize(kind)} on: #{Event.title(about)}",
+            "body" => body,
+            "kind" => kind,
+            "about_event_id" => about.event_id
+          },
+          attrs["mentions"]
+          |> Indivisual.Atlas.Extract.sanitize()
+          |> Indivisual.Atlas.Post.mentions_payload()
+        ),
       "provenance" => %{
         "author" => author,
         "about_event_id" => about.event_id,

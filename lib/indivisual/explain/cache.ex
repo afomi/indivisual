@@ -6,9 +6,10 @@ defmodule Indivisual.Explain.Cache do
   opened by many readers, so the expensive part should happen once. Generation
   measured around 8 seconds against a local model; cached reads are immediate.
 
-  Keyed by event id AND the event's content hash: if a source record ever
-  changes, the hash changes, so a stale explanation cannot outlive the text it
-  described.
+  Keyed by event id, the event's content hash, AND the model that wrote it. If a
+  source record ever changes, the hash changes, so a stale explanation cannot
+  outlive the text it described; and a reader who switches models gets that
+  model's words, never another's served from cache.
 
   ETS rather than a table, deliberately. This is derived data — losing it on
   restart costs one regeneration, while persisting it would add a second write
@@ -27,9 +28,9 @@ defmodule Indivisual.Explain.Cache do
     GenServer.start_link(__MODULE__, opts, name: Keyword.get(opts, :name, __MODULE__))
   end
 
-  @doc "Cached explanation for an event, or nil."
-  def get(%Event{} = event) do
-    case :ets.lookup(@table, key(event)) do
+  @doc "Cached explanation of an event by a model, or nil."
+  def get(%Event{} = event, model) when is_binary(model) do
+    case :ets.lookup(@table, key(event, model)) do
       [{_key, text, _at}] -> text
       [] -> nil
     end
@@ -38,8 +39,8 @@ defmodule Indivisual.Explain.Cache do
   end
 
   @doc "Stores an explanation."
-  def put(%Event{} = event, text) when is_binary(text) do
-    :ets.insert(@table, {key(event), text, System.monotonic_time(:second)})
+  def put(%Event{} = event, model, text) when is_binary(model) and is_binary(text) do
+    :ets.insert(@table, {key(event, model), text, System.monotonic_time(:second)})
     maybe_trim()
     :ok
   rescue
@@ -63,8 +64,8 @@ defmodule Indivisual.Explain.Cache do
 
   # An event's identity for caching purposes: its id plus a fingerprint of the
   # content, so a changed record never reads a stale explanation.
-  defp key(%Event{event_id: id, provenance: provenance}) do
-    {id, Map.get(provenance || %{}, "content_hash")}
+  defp key(%Event{event_id: id, provenance: provenance}, model) do
+    {id, Map.get(provenance || %{}, "content_hash"), model}
   end
 
   defp maybe_trim do

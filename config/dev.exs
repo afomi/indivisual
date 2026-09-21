@@ -86,3 +86,7 @@ config :indivisual, Indivisual.Vault,
       iv_length: 12
     }
   ]
+
+# Layouts still being worked out (Spacetime, Moment, Graph). Prod never sets
+# this, so a reader is offered only the finished views.
+config :indivisual, unreleased_layouts: true

@@ -1,0 +1,28 @@
+<%!-- The same three lines as an activity row — when and how settled; what; from
+where — in the same classes, so the two lists read as one kind of thing. One
+body, two wrappers: a button when there is a record to open, a plain block when
+the record that asserts this is the one already open. --%>
+<.dynamic_tag
+  tag_name={if @own?, do: "div", else: "button"}
+  phx-click={!@own? && @open}
+  phx-value-id={!@own? && @event_id}
+  class={["atlas-activity__item atlas-rel", @own? && "is-selected is-own"]}
+  aria-current={@own? && "true"}
+  title={
+    if @own?, do: "Asserted by the record that is open", else: "Open the record that asserts this"
+  }
+  data-event={@event_id}
+>
+  <span class="flex items-center justify-between gap-2">
+    <span class="font-mono text-[11px] text-slate-500">
+      {render_slot(@at)}
+    </span>
+    {render_slot(@badge)}
+  </span>
+  <span class="atlas-rel__claim mt-0.5 block font-medium text-slate-900">
+    {render_slot(@inner_block)}
+  </span>
+  <span class="block text-slate-500">
+    {render_slot(@source)}
+  </span>
+</.dynamic_tag>

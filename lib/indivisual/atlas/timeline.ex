@@ -19,9 +19,12 @@ defmodule Indivisual.Atlas.Timeline do
 
   alias Indivisual.Atlas.Event
 
-  # Measured on the demo fixture: 6 lanes shows 20 of 26 marks at a band height
-  # that still reads as a band. More lanes hide less but stop being horizontal.
-  @default_lanes 6
+  # Every activity should be a mark you can see, so the cap is set where the
+  # demo fixture's busiest moment (12 events at one timestamp) fits whole. It was
+  # 6, which hid 6 of 26 — and an event picked from the list could have no mark
+  # at all. A cap still exists so one very busy day cannot make the band
+  # arbitrarily tall; past it, `:pin` guarantees the selected event is drawn.
+  @default_lanes 12
 
   @type mark :: %{
           event: Event.t(),
@@ -38,7 +41,12 @@ defmodule Indivisual.Atlas.Timeline do
   `x` is a percentage (0.0–100.0) across the band; `lane` is the stacking row.
   `overflow` counts events beyond the lane cap at a shared position.
 
-  Options: `:lanes` (default #{@default_lanes}).
+  Options:
+
+    * `:lanes` — the lane cap (default #{@default_lanes})
+    * `:pin` — an `event_id` that must be drawn. If it would fall past the cap it
+      takes the top lane at its spot and the mark it displaces is counted in
+      `overflow` instead, so the selected event is never the one left out.
   """
   def build(events, opts \\ [])
 
@@ -48,6 +56,14 @@ defmodule Indivisual.Atlas.Timeline do
 
   def build(events, opts) do
     lane_cap = Keyword.get(opts, :lanes, @default_lanes)
+    pin = Keyword.get(opts, :pin)
+
+    # Ids the filters leave in. Marks outside this set are still drawn, dimmed:
+    # rebuilding the band from only what survives a filter rescales the span
+    # and the lane count, so every remaining mark jumps to a new place. The
+    # record does not change when a source is switched off, so neither should
+    # the band.
+    read = opts |> Keyword.get(:read) |> read_set()
 
     timed = Enum.map(events, fn e -> {e, Event.effective_time(e)} end)
 
@@ -73,18 +89,37 @@ defmodule Indivisual.Atlas.Timeline do
         # Stack against marks already placed at (visually) the same spot.
         lane = Enum.count(acc, fn m -> abs(m.x - x) < 0.5 end)
 
-        if lane >= lane_cap do
-          {acc, over + 1, max_lane}
-        else
-          mark = %{
-            event: event,
-            event_id: event.event_id,
-            x: Float.round(x, 3),
-            lane: lane,
-            time: time
-          }
+        cond do
+          lane >= lane_cap and event.event_id == pin and lane_cap > 0 ->
+            # Take the top lane at this spot; what was there is counted instead.
+            top = lane_cap - 1
+            kept = Enum.reject(acc, fn m -> m.lane == top and abs(m.x - x) < 0.5 end)
 
-          {[mark | acc], over, max(max_lane, lane)}
+            mark = %{
+              event: event,
+              event_id: event.event_id,
+              read: read == nil or MapSet.member?(read, event.event_id),
+              x: Float.round(x, 3),
+              lane: top,
+              time: time
+            }
+
+            {[mark | kept], over + 1, max(max_lane, top)}
+
+          lane >= lane_cap ->
+            {acc, over + 1, max_lane}
+
+          true ->
+            mark = %{
+              event: event,
+              event_id: event.event_id,
+              read: read == nil or MapSet.member?(read, event.event_id),
+              x: Float.round(x, 3),
+              lane: lane,
+              time: time
+            }
+
+            {[mark | acc], over, max(max_lane, lane)}
         end
       end)
 
@@ -195,8 +230,26 @@ defmodule Indivisual.Atlas.Timeline do
     {:month, 1200}
   ]
 
+  # Interior ticks this close (in % of the band) to an end would print over the
+  # end's own label. Measured: an end label is ~8% of a 900px band, an interior
+  # one ~5%, and the end label at 100 is right-aligned.
+  @edge_clearance_start 10.0
+  @edge_clearance_end 86.0
+
+  defp read_set(nil), do: nil
+  defp read_set(%MapSet{} = set), do: set
+  defp read_set(events) when is_list(events), do: MapSet.new(events, & &1.event_id)
+
   @doc """
-  Tick marks for the band, as `%{x:, label:}`, at a grain chosen from the span.
+  Tick marks for the band, as `%{x:, label:, edge:}`, at a grain chosen from
+  the span.
+
+  **The ends are always labelled with the exact extent** (`edge: :start` /
+  `:end`). Interior ticks fall on calendar boundaries, so on their own the last
+  one can sit months before the last event — a band ending 19 Sep 2026 would
+  read "… Jul 2026" and look like it stops in July. The edge labels are what
+  make the axis say the range it actually covers; an interior tick that would
+  collide with one gives way to it.
 
   The band rescales to whatever window is being read, so its axis has to as
   well: fixed quarterly ticks label a two-year span well and a six-week span
@@ -214,23 +267,24 @@ defmodule Indivisual.Atlas.Timeline do
     span = DateTime.diff(to, from, :second)
 
     if span <= 0 do
-      [%{x: 50.0, label: Calendar.strftime(from, "%b %-d, %Y")}]
+      [%{x: 50.0, label: Calendar.strftime(from, "%b %-d, %Y"), edge: :only}]
     else
       step = Enum.find(@steps, List.last(@steps), &(span / step_seconds(&1) <= @max_ticks))
 
-      ticks =
+      interior =
         from
         |> boundaries(to, step)
         |> Enum.map(fn dt ->
           %{
             x: Float.round(DateTime.diff(dt, from, :second) / span * 100.0, 3),
-            label: tick_label(dt, step)
+            label: tick_label(dt, step),
+            edge: nil
           }
         end)
-        |> Enum.filter(&(&1.x >= 0 and &1.x <= 100))
+        |> Enum.filter(&(&1.x > @edge_clearance_start and &1.x < @edge_clearance_end))
 
-      # A short window can fall between two boundaries; name where it starts.
-      if ticks == [], do: [%{x: 0.0, label: tick_label(from, {:day, 1})}], else: ticks
+      [%{x: 0.0, label: edge_label(from, step), edge: :start}] ++
+        interior ++ [%{x: 100.0, label: edge_label(to, step), edge: :end}]
     end
   end
 
@@ -279,6 +333,11 @@ defmodule Indivisual.Atlas.Timeline do
   end
 
   defp midnight(date), do: DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
+
+  # An end names the exact moment the band reaches, whatever the interior grain:
+  # to the day, or to the minute once the whole band is within days.
+  defp edge_label(dt, {:hour, _}), do: Calendar.strftime(dt, "%b %-d %H:%M")
+  defp edge_label(dt, _step), do: Calendar.strftime(dt, "%b %-d, %Y")
 
   defp tick_label(dt, {:hour, _}), do: Calendar.strftime(dt, "%b %-d %H:%M")
   defp tick_label(dt, {:day, _}), do: Calendar.strftime(dt, "%b %-d, %Y")

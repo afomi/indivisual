@@ -1,0 +1,168 @@
+<%!-- The graph's heading carries the question it answers and the one
+filter that is the graph's own. It sits on the graph, says what it is set
+to, and says what it removed — a filter with no readout is a bug. --%>
+<div class="atlas-panelhead">
+  <h2
+    id="atlas-canvas-title"
+    class="text-sm font-semibold"
+  >
+    Graph
+    <span class="font-normal text-slate-500">
+      · {map_size(@read_model.entities)} entities · {length(@read_model.relationships)} relationships
+    </span>
+  </h2>
+  <button
+    type="button"
+    id="atlas-graph-connected"
+    role="checkbox"
+    phx-click="toggle_connected"
+    aria-checked={to_string(@connected_only?)}
+    class="atlas-srcfilter__item atlas-panelhead__toggle"
+  >
+    <span
+      class="atlas-srcfilter__box"
+      aria-hidden="true"
+    ></span>
+    <span>connected only</span>
+    <%= if @connected_only? do %>
+      <span
+        id="atlas-graph-hidden"
+        class="atlas-srcfilter__n"
+      >
+        {@graph_hidden} hidden
+      </span>
+    <% end %>
+  </button>
+</div>
+<p class="atlas-panel__question">
+  {IndivisualWeb.AtlasLive.panel_question("topology")}
+</p>
+
+<p class="sr-only">
+  The canvas draws {map_size(@read_model.entities)} entities on a ring and {length(
+    @read_model.relationships
+  )} relationships between them.
+  The same information is available as lists in the reader.
+</p>
+
+<%!-- The graph's positions are a ring in ref order and mean nothing by
+themselves; only the links do. Saying so is the point of an axes legend. --%>
+<.axes
+  id="atlas-graph-axes"
+  x="a ring, in ref order: position means nothing"
+  y="a ring, in ref order: position means nothing"
+/>
+<%!-- The column itself is unframed; each instrument in it carries its
+own border, so the map and the graph read as two things, not one box. --%>
+<div
+  id="atlas-graph"
+  class="atlas-graph"
+>
+  <svg
+    id="atlas-svg"
+    viewBox="0 0 800 600"
+    class="h-auto w-full max-w-full"
+    role="img"
+    aria-label={"Topology of #{map_size(@read_model.entities)} entities and #{length(@read_model.relationships)} relationships"}
+    data-selected={@selected && @selected.event_id}
+  >
+    <g id="atlas-svg-relationships">
+      <%= for rel <- @read_model.relationships do %>
+        <% from = Map.get(@read_model.positions, rel.subject) %>
+        <% to = Map.get(@read_model.positions, rel.object) %>
+        <%= if from && to do %>
+          <line
+            x1={from.x}
+            y1={from.y}
+            x2={to.x}
+            y2={to.y}
+            stroke={IndivisualWeb.AtlasLive.truth_stroke(rel.truth_state)}
+            stroke-width={
+              if @selected && rel.event_id == @selected.event_id, do: "4", else: "1.5"
+            }
+            stroke-dasharray={
+              if rel.truth_state in ["proposed", "reported"], do: "6 4", else: nil
+            }
+            opacity={if @selected && rel.event_id == @selected.event_id, do: "1", else: "0.55"}
+            data-event={rel.event_id}
+            data-truth={rel.truth_state}
+            class="motion-safe:transition-all"
+          >
+            <title>
+              {IndivisualWeb.AtlasLive.entity_label(@read_model, rel.subject)} {rel.relationship} {IndivisualWeb.AtlasLive.entity_label(
+                @read_model,
+                rel.object
+              )} ({rel.truth_state})
+            </title>
+          </line>
+        <% end %>
+      <% end %>
+    </g>
+    <g id="atlas-svg-entities">
+      <%= for {ref, entity} <- Enum.sort_by(@read_model.entities, fn {ref, _} -> ref end) do %>
+        <% pos = Map.fetch!(@read_model.positions, ref) %>
+        <% affected? = ref in @affected %>
+        <% focused? = ref == @entity %>
+        <g
+          phx-click="focus_entity"
+          phx-value-ref={ref}
+          class="cursor-pointer"
+          data-ref={ref}
+          data-affected={to_string(affected?)}
+          role="button"
+          tabindex="-1"
+        >
+          <circle
+            cx={pos.x}
+            cy={pos.y}
+            r={if affected? or focused?, do: 16, else: 10}
+            fill={if affected?, do: "#1d4ed8", else: "#ffffff"}
+            stroke={if focused?, do: "#b45309", else: "#1e293b"}
+            stroke-width={if affected? or focused?, do: "3", else: "1.5"}
+            class="motion-safe:transition-all"
+          >
+            <title>
+              {entity.label} ({entity.kind}) — {length(entity.event_ids)} event(s)
+            </title>
+          </circle>
+          <%!-- What kind of thing the node is, drawn inside it: a person, a pin.
+          The 20-unit icon is scaled to sit within the circle, and takes the
+          contrasting colour of whatever fill the node's state gives it. --%>
+          <%= if icon = entity_icon_path(entity.kind) do %>
+            <% size = if affected? or focused?, do: 18, else: 13 %>
+            <path
+              d={icon.d}
+              fill-rule={icon[:rule]}
+              clip-rule={icon[:rule]}
+              fill={if affected?, do: "#ffffff", else: "#1e293b"}
+              transform={"translate(#{pos.x - size / 2} #{pos.y - size / 2}) scale(#{size / 20})"}
+              pointer-events="none"
+            />
+          <% end %>
+          <text
+            x={pos.x}
+            y={pos.y + if pos.y > 300, do: 30, else: -22}
+            text-anchor="middle"
+            font-size="12"
+            fill="#0f172a"
+            font-weight={if affected?, do: "600", else: "400"}
+          >
+            {entity.label}
+          </text>
+          <%= if affected? do %>
+            <text
+              x={pos.x}
+              y={pos.y + 4}
+              text-anchor="middle"
+              font-size="10"
+              fill="#ffffff"
+              aria-hidden="true"
+            >
+              ●
+            </text>
+          <% end %>
+        </g>
+      <% end %>
+    </g>
+  </svg>
+</div>

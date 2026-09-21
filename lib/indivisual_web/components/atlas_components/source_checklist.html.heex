@@ -1,0 +1,60 @@
+<%!-- Checked means included, so "all checked" and "no filter" are the same
+state, and the last checked source cannot be unchecked — an empty list would
+read as "nothing happened" rather than "nothing selected". --%>
+<div
+  id={@id}
+  class="atlas-srcfilter"
+  role="group"
+  aria-labelledby={"#{@id}-label"}
+>
+  <p class="atlas-srcfilter__head">
+    <span id={"#{@id}-label"}>
+      Sources
+    </span>
+    <span
+      id={"#{@id}-count"}
+      class="atlas-srcfilter__count"
+    >
+      {length(@shown)} of {map_size(@sources)}
+    </span>
+    <%= if @filter != [] do %>
+      <button
+        type="button"
+        id={"#{@id}-all"}
+        phx-click="clear_sources"
+        class="atlas-sourcenav__clear"
+      >
+        all
+      </button>
+    <% end %>
+  </p>
+  <%= for {id, source} <- Enum.sort_by(@sources, fn {_, s} -> s.title end) do %>
+    <button
+      type="button"
+      id={"#{@item_prefix}-#{id}"}
+      role="checkbox"
+      phx-click="check_source"
+      phx-value-source={id}
+      aria-checked={to_string(id in @shown)}
+      aria-disabled={to_string(@shown == [id])}
+      title={
+        if(@shown == [id],
+          do: "At least one source stays on.",
+          else: source.title
+        )
+      }
+      class="atlas-srcfilter__item"
+    >
+      <span
+        class="atlas-srcfilter__box"
+        aria-hidden="true"
+      ></span>
+      <span class="atlas-srcfilter__title">
+        {source.title}
+      </span>
+      <span class="atlas-srcfilter__n">
+        {Map.get(@counts, id, 0)}
+      </span>
+    </button>
+  <% end %>
+</div>

@@ -142,6 +142,27 @@ defmodule Indivisual.Atlas.Event do
     (objects ++ List.wrap(actor)) |> Enum.reject(&is_nil/1) |> Enum.uniq()
   end
 
+  @doc """
+  Whether an event reads as a **noun** or a **verb**.
+
+  A noun event says that something EXISTS: it registers an entity (a plan, a
+  park, a commission) and carries `payload["entity"]`. A verb event says that
+  something HAPPENED — to a thing, or between things: a plan was adopted, a
+  payment made, a relationship asserted, a question asked. The stream holds
+  both, and they are different kinds of reading: nouns are the cast, verbs are
+  the plot.
+
+  This is a fact about the event's shape (does it carry the `thing` facet —
+  `docs/VIEWS.md`), not a judgement, so it is derived and never stored.
+  """
+  def part_of_speech(%__MODULE__{payload: %{"entity" => %{"ref" => ref}}}) when is_binary(ref),
+    do: "noun"
+
+  def part_of_speech(%__MODULE__{}), do: "verb"
+
+  @doc "The parts of speech, in the order a filter lists them."
+  def parts_of_speech, do: ~w(verb noun)
+
   @doc "True when the event is a user annotation rather than a source fact."
   def annotation?(%__MODULE__{event_type: type}) when is_binary(type),
     do: String.starts_with?(type, @annotation_prefix)
@@ -228,6 +249,14 @@ defmodule Indivisual.Atlas.Event do
 
   defp require_sequence(errors, %{sequence: :invalid}),
     do: [{:sequence, "must be an integer or list of integers"} | errors]
+
+  # The store keeps `sequence` as 32-bit integers. An envelope it cannot hold is
+  # invalid HERE, with a message, rather than at the database with an exception.
+  defp require_sequence(errors, %{sequence: sequence}) when is_list(sequence) do
+    if Enum.all?(sequence, &(&1 in -2_147_483_648..2_147_483_647)),
+      do: errors,
+      else: [{:sequence, "each part must fit a 32-bit integer"} | errors]
+  end
 
   defp require_sequence(errors, _), do: errors
 

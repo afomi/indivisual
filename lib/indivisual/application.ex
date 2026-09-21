@@ -21,6 +21,9 @@ defmodule Indivisual.Application do
       # Derived, in-memory: generated explanations, cached so the slow part
       # happens once per record rather than once per reader.
       Indivisual.Explain.Cache,
+      # Derived, in-memory: event embeddings for the Spacetime scene's semantic
+      # axes. Needs the task supervisor and PubSub above it.
+      Indivisual.Atlas.Semantics,
       # Background jobs (embedding generation for the topo semantic axes).
       {Oban, Application.fetch_env!(:indivisual, Oban)},
       # In-memory Atlas event feed: loads source adapters, broadcasts appends.

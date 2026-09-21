@@ -1,0 +1,34 @@
+<%!-- Four mutually exclusive options, so a radio group: the browser gives
+arrow-key navigation and a single-selection contract for free, and all four
+stay visible rather than hiding behind a menu. --%>
+<nav
+  id={@id}
+  class="atlas-projnav"
+  aria-label="Projection"
+>
+  <form
+    id={"#{@id}-form"}
+    phx-change="select_projection"
+    class="atlas-projnav__row"
+    role="radiogroup"
+    aria-label="Projection"
+  >
+    <%= for def <- @projections do %>
+      <label class={["atlas-projnav__option", def.id == @projection && "is-active"]}>
+        <input
+          type="radio"
+          name="projection"
+          value={def.id}
+          checked={def.id == @projection}
+          class="sr-only"
+        />
+        <span class="atlas-projnav__name">
+          {def.name}
+        </span>
+        <span class="atlas-projnav__question">
+          {def.question}
+        </span>
+      </label>
+    <% end %>
+  </form>
+</nav>

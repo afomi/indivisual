@@ -7,7 +7,11 @@ defmodule Indivisual.Embeddings do
       config :indivisual, Indivisual.Embeddings,
         adapter: Indivisual.Embeddings.Ollama,
         url: "http://localhost:11434",
-        model: "nomic-embed-text"
+        model: "qwen3-embedding:8b"
+
+  One model, on purpose: `qwen3-embedding:8b` via local Ollama. Axes and scores
+  record the model they were computed with, so switching means recomputing axes
+  and rescoring nodes — not something to do casually.
 
   The app must work fully without an embedding backend: adapters return
   `{:error, :unavailable}` rather than raising, and callers surface that.
@@ -28,7 +32,7 @@ defmodule Indivisual.Embeddings do
   def adapter, do: Keyword.get(config(), :adapter, Indivisual.Embeddings.Ollama)
 
   @doc "The configured embedding model name (recorded on axes and scores)."
-  def model, do: Keyword.get(config(), :model, "nomic-embed-text")
+  def model, do: Keyword.get(config(), :model, "qwen3-embedding:8b")
 
   @doc "Base URL of the embedding backend."
   def url, do: Keyword.get(config(), :url, "http://localhost:11434")

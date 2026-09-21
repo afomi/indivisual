@@ -115,6 +115,36 @@ defmodule Indivisual.Atlas.TimelineTest do
       assert length(marks) + overflow == 10, "every event is either shown or counted"
     end
 
+    test "a pinned event is always drawn, even past the cap" do
+      t = ~U[2024-01-01 00:00:00Z]
+      events = for i <- 1..10, do: event("e#{i}", t)
+
+      %{marks: marks, overflow: overflow, lanes: lanes} =
+        Timeline.build(events, lanes: 3, pin: "e9")
+
+      assert "e9" in Enum.map(marks, & &1.event_id)
+      # It displaces one mark rather than adding a lane: still 3 shown, 7 counted.
+      assert length(marks) == 3
+      assert overflow == 7
+      assert lanes == 3
+      assert marks |> Enum.map(& &1.lane) |> Enum.sort() == [0, 1, 2]
+    end
+
+    test "a pin that already fits changes nothing" do
+      t = ~U[2024-01-01 00:00:00Z]
+      events = for i <- 1..10, do: event("e#{i}", t)
+
+      assert Timeline.build(events, lanes: 3, pin: "e2") == Timeline.build(events, lanes: 3)
+      assert Timeline.build(events, lanes: 3, pin: "nope") == Timeline.build(events, lanes: 3)
+    end
+
+    test "the default cap holds the demo fixture's busiest moment whole" do
+      t = ~U[2024-04-09 00:00:00Z]
+      events = for i <- 1..12, do: event("e#{i}", t)
+
+      assert %{overflow: 0, lanes: 12} = Timeline.build(events)
+    end
+
     test "lanes reports the actual depth used" do
       t = ~U[2024-01-01 00:00:00Z]
       assert %{lanes: 2} = Timeline.build([event("a", t), event("b", t)], lanes: 6)
@@ -211,16 +241,45 @@ defmodule Indivisual.Atlas.TimelineTest do
 
       ticks = events |> Timeline.build() |> Timeline.ticks()
 
-      assert length(ticks) > 0
+      interior = Enum.filter(ticks, &is_nil(&1.edge))
+
+      assert length(interior) > 0
       assert Enum.all?(ticks, &(&1.x >= 0 and &1.x <= 100))
-      assert Enum.all?(ticks, &(&1.label =~ ~r/^(Jan|Apr|Jul|Oct) \d{4}$/))
+      assert Enum.all?(interior, &(&1.label =~ ~r/^(Jan|Apr|Jul|Oct) \d{4}$/))
     end
 
+    defp ticks(from, to) do
+      [event("a", from), event("b", to)] |> Timeline.build() |> Timeline.ticks()
+    end
+
+    # Interior (calendar-boundary) labels only; the ends are covered separately.
     defp labels(from, to) do
-      [event("a", from), event("b", to)]
-      |> Timeline.build()
-      |> Timeline.ticks()
-      |> Enum.map(& &1.label)
+      from |> ticks(to) |> Enum.filter(&is_nil(&1.edge)) |> Enum.map(& &1.label)
+    end
+
+    test "the ends name the exact extent, so the axis says the range it covers" do
+      # The regression: a band ending 19 Sep 2026 whose last label was "Jul 2026"
+      # read as though it stopped in July.
+      ticks = ticks(~U[2024-04-09 00:00:00Z], ~U[2026-09-19 00:00:00Z])
+
+      assert List.first(ticks) == %{x: 0.0, label: "Apr 9, 2024", edge: :start}
+      assert List.last(ticks) == %{x: 100.0, label: "Sep 19, 2026", edge: :end}
+    end
+
+    test "an interior tick gives way rather than printing over an end" do
+      ticks = ticks(~U[2024-04-09 00:00:00Z], ~U[2026-09-19 00:00:00Z])
+      interior = Enum.filter(ticks, &is_nil(&1.edge))
+
+      # Jul 2026 sits at ~91%, under the end label; it yields.
+      refute "Jul 2026" in Enum.map(interior, & &1.label)
+      assert Enum.all?(interior, &(&1.x > 10 and &1.x < 86))
+    end
+
+    test "within days, the ends go to the minute" do
+      ticks = ticks(~U[2024-04-09 08:15:00Z], ~U[2024-04-09 14:40:00Z])
+
+      assert List.first(ticks).label == "Apr 9 08:15"
+      assert List.last(ticks).label == "Apr 9 14:40"
     end
 
     test "the grain follows the window, so narrowing the range re-labels the axis" do
@@ -233,27 +292,26 @@ defmodule Indivisual.Atlas.TimelineTest do
       assert labels(~U[2024-04-09 00:00:00Z], ~U[2024-08-13 00:00:00Z]) == [
                "May 2024",
                "Jun 2024",
-               "Jul 2024",
-               "Aug 2024"
+               "Jul 2024"
              ]
 
-      assert labels(~U[2024-04-09 00:00:00Z], ~U[2024-04-14 00:00:00Z]) |> hd() == "Apr 9, 2024"
-      assert labels(~U[2024-04-09 08:00:00Z], ~U[2024-04-09 14:00:00Z]) |> hd() == "Apr 9 08:00"
+      assert labels(~U[2024-04-09 00:00:00Z], ~U[2024-04-14 00:00:00Z]) |> hd() == "Apr 10, 2024"
+      assert labels(~U[2024-04-09 08:00:00Z], ~U[2024-04-09 14:00:00Z]) |> hd() == "Apr 9 09:00"
     end
 
     test "never more labels than a thin band can hold" do
       for days <- [1, 3, 10, 45, 200, 900, 5000, 40_000] do
         to = DateTime.add(~U[2024-04-09 00:00:00Z], days * 86_400, :second)
-        count = length(labels(~U[2024-04-09 00:00:00Z], to))
+        count = length(ticks(~U[2024-04-09 00:00:00Z], to))
 
-        assert count in 1..10, "#{days} days produced #{count} ticks"
+        assert count in 2..10, "#{days} days produced #{count} ticks"
       end
     end
 
     test "a window of one instant still names its day" do
       ticks = [event("a", ~U[2024-04-09 12:00:00Z])] |> Timeline.build() |> Timeline.ticks()
 
-      assert ticks == [%{x: 50.0, label: "Apr 9, 2024"}]
+      assert ticks == [%{x: 50.0, label: "Apr 9, 2024", edge: :only}]
     end
 
     test "ticks stay inside the band at every grain" do

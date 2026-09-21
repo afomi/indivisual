@@ -1,22 +1,17 @@
 defmodule IndivisualWeb.TopoAtlasTest do
   @moduledoc """
-  The two features indivisual exists for. These assert the pages actually
-  render against an empty database — the state a fresh deploy is in — rather
-  than only that a route resolves.
+  /atlas renders against an empty database — the state a fresh deploy is in —
+  rather than only resolving as a route. (/topo, which this file also covered,
+  was removed on 2026-09-20.)
   """
   use IndivisualWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
 
-  describe "GET /topo" do
-    test "renders with no space data", %{conn: conn} do
-      conn = get(conn, ~p"/topo")
-      assert html_response(conn, 200)
-    end
-
-    test "renders for an unknown space slug", %{conn: conn} do
-      conn = get(conn, ~p"/topo/does-not-exist")
-      assert html_response(conn, 200)
+  describe "/topo" do
+    test "is gone", %{conn: conn} do
+      assert conn |> get("/topo") |> response(404)
+      assert conn |> get("/topo/muni-codes") |> response(404)
     end
   end
 

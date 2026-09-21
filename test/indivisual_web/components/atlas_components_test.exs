@@ -93,6 +93,96 @@ defmodule IndivisualWeb.AtlasComponentsTest do
     end
   end
 
+  describe "source_checklist/1 (unmounted)" do
+    defp checklist(assigns) do
+      render_component(
+        &AtlasComponents.source_checklist/1,
+        Map.merge(%{sources: @sources, shown: Map.keys(@sources)}, assigns)
+      )
+    end
+
+    test "one checkbox per source, with its count" do
+      html = checklist(%{counts: %{"a-source" => 7}})
+
+      assert count(html, "#atlas-activity-sources") == 1
+      assert count(html, ~s(button[role="checkbox"][phx-click="check_source"])) == 2
+
+      assert count(
+               html,
+               ~s(#atlas-activity-source-a-source[phx-value-source="a-source"][aria-checked="true"])
+             ) == 1
+
+      n =
+        html
+        |> doc()
+        |> LazyHTML.query("#atlas-activity-source-a-source .atlas-srcfilter__n")
+        |> LazyHTML.text()
+
+      assert String.trim(n) == "7"
+    end
+
+    test "no filter offers no reset; a filter does" do
+      assert count(checklist(%{}), ~s(button[phx-click="clear_sources"])) == 0
+
+      html = checklist(%{filter: ["a-source"], shown: ["a-source"]})
+      assert count(html, ~s(#atlas-activity-sources-all[phx-click="clear_sources"])) == 1
+      assert count(html, ~s(#atlas-activity-source-b-source[aria-checked="false"])) == 1
+    end
+
+    test "the last checked source is marked as staying on" do
+      html = checklist(%{filter: ["a-source"], shown: ["a-source"]})
+
+      assert count(html, ~s(#atlas-activity-source-a-source[aria-disabled="true"])) == 1
+    end
+
+    test "ids can be overridden so two can share a page" do
+      html = checklist(%{id: "other", item_prefix: "other-item"})
+
+      assert count(html, "#other") == 1
+      assert count(html, "#other-item-a-source") == 1
+      assert count(html, "#atlas-activity-sources") == 0
+    end
+  end
+
+  describe "feed_status/1 (unmounted)" do
+    defp status(assigns) do
+      render_component(
+        &AtlasComponents.feed_status/1,
+        Map.merge(%{status: %{persistence: :ok, persisted_count: 4}, event_count: 27}, assigns)
+      )
+    end
+
+    test "says where the data comes from, and how much is kept and in view" do
+      html = status(%{live?: true, live_updates: 2})
+      text = html |> doc() |> LazyHTML.text()
+
+      assert count(html, "#atlas-status") == 1
+      assert text =~ "Demo fixture"
+      assert text =~ "live · 2 update(s) since load"
+      assert text =~ "4 appended event(s) kept across restarts"
+
+      assert html
+             |> doc()
+             |> LazyHTML.query("#atlas-event-count")
+             |> LazyHTML.text()
+             |> String.trim() == "27"
+    end
+
+    test "before the socket connects it says so" do
+      assert status(%{}) |> doc() |> LazyHTML.text() =~ "connecting"
+    end
+
+    test "an unreachable store is reported, not hidden" do
+      text =
+        status(%{status: %{persistence: {:error, :down}, persisted_count: 0}})
+        |> doc()
+        |> LazyHTML.text()
+
+      assert text =~ "unavailable"
+      assert text =~ "Appends are refused"
+    end
+  end
+
   describe "the unmounted register" do
     test "names real components" do
       for name <- AtlasComponents.unmounted() do
@@ -106,6 +196,123 @@ defmodule IndivisualWeb.AtlasComponentsTest do
       for name <- AtlasComponents.unmounted() do
         assert moduledoc =~ ~r/`#{name}\/1` \| \*\*unmounted\*\*/
       end
+    end
+  end
+
+  describe "person_card/1" do
+    @bare %{
+      ref: "person:afomi",
+      name: "Afomi",
+      initials: "A",
+      registered?: false,
+      job_title: nil,
+      affiliation: nil,
+      description: nil,
+      url: nil,
+      image: nil,
+      same_as: [],
+      authored: 3,
+      mentioned: 1,
+      wrote: [{"question", 2}, {"observation", 1}],
+      first_seen: ~U[2026-03-01 00:00:00Z],
+      last_seen: ~U[2026-05-01 00:00:00Z]
+    }
+
+    defp card(profile, extra \\ %{}),
+      do: render_component(&AtlasComponents.person_card/1, Map.merge(%{profile: profile}, extra))
+
+    test "with a name alone it is a finished card: initials, counts, and an honest label" do
+      html = card(@bare)
+
+      assert html =~ "Afomi"
+      assert count(html, "#atlas-person img") == 0
+      assert html =~ ~r/>\s*A\s*</, "initials stand in for a photo"
+      assert doc(html) |> LazyHTML.query("#atlas-person-authored") |> LazyHTML.text() =~ "3"
+      assert doc(html) |> LazyHTML.query("#atlas-person-mentioned") |> LazyHTML.text() =~ "1"
+      assert count(html, "#atlas-person-unregistered") == 1
+      assert count(html, "#atlas-person-role") == 0
+      assert count(html, "#atlas-person-links") == 0
+    end
+
+    test "a registration fills it in" do
+      html =
+        card(%{
+          @bare
+          | registered?: true,
+            job_title: "Parks planner",
+            affiliation: "City of Vacaville",
+            description: "Leads the trails programme.",
+            url: "https://example.test/jane",
+            image: "https://example.test/jane.jpg",
+            same_as: ["https://social.example/@jane"]
+        })
+
+      assert count(html, ~s(#atlas-person img[src="https://example.test/jane.jpg"])) == 1
+      assert html =~ "Parks planner · City of Vacaville"
+      assert html =~ "Leads the trails programme."
+      assert count(html, ~s(#atlas-person-links a[rel="noopener noreferrer"])) == 2
+      assert count(html, "#atlas-person-unregistered") == 0
+    end
+
+    test "the heading takes the id its section is labelled by" do
+      html = card(@bare, %{title_id: "atlas-entity-context-title"})
+
+      assert count(html, "h2#atlas-entity-context-title") == 1
+      assert count(html, ~s(article[aria-labelledby="atlas-entity-context-title"])) == 1
+    end
+  end
+
+  describe "entity_icon/1" do
+    defp icon(kind), do: render_component(&AtlasComponents.entity_icon/1, kind: kind)
+
+    test "a person is a person, a body is a group, a place is a pin, a policy is a page" do
+      for kind <- ["person", "body", "place", "policy", "document", "plan"] do
+        html = icon(kind)
+
+        assert count(html, ~s(svg.atlas-kindicon[data-kind="#{kind}"][aria-hidden="true"])) == 1
+        assert html =~ AtlasComponents.entity_icon_path(kind).d
+      end
+
+      # Each kind reads as itself, not as a near-neighbour.
+      assert icon("person") != icon("place")
+      assert icon("policy") != icon("place")
+      assert icon("policy") != icon("person")
+
+      # The written things share one icon; each still says which kind it is.
+      for kind <- ["document", "plan"] do
+        assert AtlasComponents.entity_icon_path(kind) ==
+                 AtlasComponents.entity_icon_path("policy")
+
+        assert icon(kind) =~ ~s(data-kind="#{kind}")
+      end
+
+      assert icon("body") != icon("person"), "one figure or several is the distinction"
+    end
+
+    test "every icon is a 20px path, so kinds sit at one size" do
+      for kind <- ["person", "body", "place", "policy", "document", "plan"] do
+        assert icon(kind) =~ ~s(viewBox="0 0 20 20")
+      end
+    end
+
+    test "a kind with no icon draws nothing, so it can sit beside any name" do
+      assert count(icon("goal"), "svg") == 0
+      assert AtlasComponents.entity_icon_path("goal") == nil
+    end
+  end
+
+  describe "filter_chip/1" do
+    test "an entity chip draws its kind" do
+      html =
+        render_component(&AtlasComponents.filter_chip/1,
+          id: "c",
+          label: "Entity",
+          value: "Carroll Way",
+          kind: "place"
+        )
+
+      assert count(html, ~s(#c svg[data-kind="place"])) == 1
+      assert count(html, "#c button") == 0, "no clear event: read-only"
     end
   end
 end

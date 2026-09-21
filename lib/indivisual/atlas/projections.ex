@@ -11,7 +11,7 @@ defmodule Indivisual.Atlas.Projections do
   |--------------|---------------------|
   | `activity`   | What changed, in source order, and who/what did it affect? |
   | `entity`     | What events, relationships, sources, and unresolved items surround this entity? |
-  | `topology`   | Which entities are connected by the selected event window or source filter? |
+  | `topology`   | Which entities are connected in the current view? |
   | `provenance` | What is observed directly, reported by a source, proposed, adopted, or delivered? |
 
   Every read model carries `:entities`, `:relationships`, and `:positions` so the same
@@ -35,7 +35,7 @@ defmodule Indivisual.Atlas.Projections do
     %{
       id: "topology",
       name: "Topology",
-      question: "Which entities are connected by the selected event window or source filter?"
+      question: "Which entities are connected in the current view?"
     },
     %{
       id: "provenance",
@@ -63,7 +63,6 @@ defmodule Indivisual.Atlas.Projections do
   Options:
 
     * `:entity` — focused entity ref (used by `entity`; ignored otherwise)
-    * `:until`  — selected event id; `topology` narrows to the window up to it
 
   Returns a read model map with at least `:projection`, `:entities`, `:relationships`,
   `:positions`, and `:event_count`.
@@ -111,26 +110,19 @@ defmodule Indivisual.Atlas.Projections do
     end
   end
 
-  def materialize("topology", events, opts) do
-    window =
-      case opts[:until] do
-        nil ->
-          events
-
-        until ->
-          case Enum.find_index(events, &(&1.event_id == until)) do
-            nil -> events
-            idx -> Enum.take(events, idx + 1)
-          end
-      end
-
-    relationships = Topology.relationships(window)
-    entities = Topology.entities(window)
+  # Reads exactly the events it is given, like every other projection. It used to
+  # narrow again, silently, to the events up to the selected one — a filter with
+  # no control and no readout. The caller's window is the only window.
+  def materialize("topology", events, _opts) do
+    relationships = Topology.relationships(events)
     connected = relationships |> Enum.flat_map(&[&1.subject, &1.object]) |> MapSet.new()
-    entities = Map.filter(entities, fn {ref, _} -> MapSet.member?(connected, ref) end)
+
+    entities =
+      events
+      |> Topology.entities()
+      |> Map.filter(fn {ref, _} -> MapSet.member?(connected, ref) end)
 
     base("topology", entities, relationships, events)
-    |> Map.put(:window_size, length(window))
   end
 
   def materialize("provenance", events, _opts) do

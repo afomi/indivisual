@@ -28,7 +28,10 @@ import topbar from "../vendor/topbar"
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {_csrf_token: csrfToken},
+  // `tz_offset`: minutes east of UTC, so a typed "yesterday 3pm" is the
+  // reader's yesterday. An offset rather than a zone name: the server has no
+  // timezone database, and a moment needs only the offset it was written in.
+  params: () => ({_csrf_token: csrfToken, tz_offset: -new Date().getTimezoneOffset()}),
   hooks: {...colocatedHooks},
 })
 
@@ -81,10 +84,3 @@ if (process.env.NODE_ENV === "development") {
   })
 }
 
-// /topo — 3D semantic-axis scatter (three.js). Exposed on window because the
-// topo template is a plain controller-rendered page, not a LiveView hook.
-import { renderTopo } from "./topo"
-
-window.renderTopo = function (selector) {
-  renderTopo(selector)
-}

@@ -76,6 +76,25 @@ defmodule IndivisualWeb.UserAuth do
     end
   end
 
+  @doc """
+  LiveView counterpart of `fetch_current_scope_for_user/2`: assigns
+  `:current_scope` from the session, or `nil` for a signed-out reader. It never
+  redirects — use it on pages that work either way and only offer more to someone
+  signed in. The plug has already run on the first request (it is what moves a
+  remember-me cookie into the session), so the session is all this needs.
+  """
+  def on_mount(:mount_current_scope, _params, session, socket) do
+    {:cont,
+     Phoenix.Component.assign_new(socket, :current_scope, fn ->
+       with token when is_binary(token) <- session["user_token"],
+            {user, _inserted_at} <- Accounts.get_user_by_session_token(token) do
+         Scope.for_user(user)
+       else
+         _ -> nil
+       end
+     end)}
+  end
+
   defp ensure_user_token(conn) do
     if token = get_session(conn, :user_token) do
       {token, conn}

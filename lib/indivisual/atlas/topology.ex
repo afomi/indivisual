@@ -4,7 +4,8 @@ defmodule Indivisual.Atlas.Topology do
   Atlas events.
 
   Entities come from two places: explicit `*.entity.registered` events whose payload
-  carries `%{"entity" => %{"ref", "label", "kind", "geo"}}`, and any `object` or
+  carries `%{"entity" => %{"ref", "label", "kind", "geo", …}}` (any further keys are
+  kept as the entity's `attrs`), and any `object` or
   `actor` that no registration names (these get a humanized label so nothing
   referenced is invisible). Relationships come from events whose payload carries
   `%{"relationship" => %{"subject", "relationship", "object"}}`; each keeps the asserting event's
@@ -21,6 +22,7 @@ defmodule Indivisual.Atlas.Topology do
           label: String.t(),
           kind: String.t(),
           geo: map() | nil,
+          attrs: map(),
           registered: boolean(),
           event_ids: [String.t()],
           truth_state: String.t() | nil
@@ -137,6 +139,10 @@ defmodule Indivisual.Atlas.Topology do
       label: entity["label"] || humanize(ref),
       kind: entity["kind"] || kind_of(ref),
       geo: entity["geo"],
+      # Whatever else the registration said about the thing, verbatim. A kind's
+      # own display reads what it understands from here (a person's `jobTitle`,
+      # say) and ignores the rest; nothing is required.
+      attrs: Map.drop(entity, ~w(ref label kind geo)),
       registered: true,
       event_ids: [],
       truth_state: event.truth_state
@@ -155,6 +161,7 @@ defmodule Indivisual.Atlas.Topology do
       label: humanize(ref),
       kind: kind_of(ref),
       geo: nil,
+      attrs: %{},
       registered: false,
       event_ids: [],
       truth_state: nil

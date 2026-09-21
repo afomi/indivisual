@@ -25,8 +25,15 @@
   --ink-faint: #888;
   --rule: #ddd;
   --paper: #fff;
+  /* Entity state, the same in every view: see `.atlas-pin` */
+  --affected: #1d4ed8;
+  --focus: #b45309;
   --link: #0000cc;
   --link-visited: #551a8b;
+  /* The two authoring voices; see "the two voices" below. */
+  --person: #0f766e;
+  --person-wash: #effbf9;
+  --person-hover: #0b5b55;
 
   --measure: 34rem;      /* ~65 characters — the readable line length */
   --gutter: 1.5rem;
@@ -40,8 +47,14 @@
     --ink-faint: #777;
     --rule: #333;
     --paper: #0d0d0d;
+    --affected: #60a5fa;
+    --focus: #f59e0b;
     --link: #9db4ff;
     --link-visited: #c0a0e0;
+    /* The two authoring voices; see "the two voices" below. */
+    --person: #5eead4;
+    --person-wash: #0d1f1d;
+    --person-hover: #99f6e4;
   }
 }
 
@@ -69,7 +82,7 @@ body {
   padding: calc(var(--baseline) * 2) var(--gutter) calc(var(--baseline) * 4);
 }
 
-/* Pages that need the full viewport (the topo canvas) opt out of the measure. */
+/* Pages that need the full viewport (/atlas) opt out of the measure. */
 .wrap--full {
   max-width: none;
   padding: 0;
@@ -96,46 +109,63 @@ body {
 
 .masthead__name:visited { color: var(--ink); }
 
+/* The nav sits beside the brand, on the left. The right of the row is left
+   free: on /atlas the view bar (Copy link, Detach) is lifted into it — see
+   `.atlas-viewbar`. */
 .masthead nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0 1rem;
-  margin-left: auto;
   font-size: 13px;
 }
 
-/* ── Type ──────────────────────────────────────────────────────────────── */
-
-h1 {
-  font-size: 22px;
-  line-height: calc(var(--baseline) * 1.2);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 var(--baseline);
-}
-
-h2 {
-  font-size: 15px;
-  font-weight: 700;
-  margin: calc(var(--baseline) * 2) 0 0;
-}
-
-p { margin: 0 0 var(--baseline); max-width: var(--measure); }
-
-small, .small { font-size: 13px; color: var(--ink-soft); }
-
-.muted { color: var(--ink-soft); }
-.faint { color: var(--ink-faint); }
-
-a { color: var(--link); text-decoration: underline; }
-a:visited { color: var(--link-visited); }
-a:hover { text-decoration: none; }
-
-hr {
-  border: 0;
+/* ── Footer ────────────────────────────────────────────────────────────── */
+/* The masthead's quiet counterpart: same gutter, same type, links to the right. */
+.site-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: calc(var(--baseline) * 2);
+  padding: var(--baseline) var(--gutter);
   border-top: 1px solid var(--rule);
-  margin: calc(var(--baseline) * 1.5) 0;
-  max-width: var(--measure);
+  font-size: 13px;
+}
+
+.site-footer nav { display: flex; flex-wrap: wrap; gap: 0 1rem; }
+
+@layer base {
+  /* ── Type ──────────────────────────────────────────────────────────────── */
+
+  h1 {
+    font-size: 22px;
+    line-height: calc(var(--baseline) * 1.2);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 var(--baseline);
+  }
+
+  h2 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: calc(var(--baseline) * 2) 0 0;
+  }
+
+  p { margin: 0 0 var(--baseline); max-width: var(--measure); }
+
+  small, .small { font-size: 13px; color: var(--ink-soft); }
+
+  .muted { color: var(--ink-soft); }
+  .faint { color: var(--ink-faint); }
+
+  a { color: var(--link); text-decoration: underline; }
+  a:visited { color: var(--link-visited); }
+  a:hover { text-decoration: none; }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: calc(var(--baseline) * 1.5) 0;
+    max-width: var(--measure);
+  }
 }
 
 /* ── Index list — the Craigslist device ───────────────────────────────── */
@@ -148,22 +178,71 @@ hr {
 
 .index .desc { color: var(--ink-soft); }
 
-/* ── Forms / buttons, kept plain ──────────────────────────────────────── */
+/* ── Sketch figure ─────────────────────────────────────────────────────── */
+/* A hand-drawn diagram exported from tldraw. It is drawn in black ink on
+   white, so it keeps its own paper in dark mode rather than inverting. Allowed
+   to run wider than the reading measure: a diagram is not a line of text. */
 
-button, .button {
-  font: inherit;
-  font-size: 13px;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid var(--ink);
-  border-radius: 0;
-  padding: 0.25rem 0.75rem;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
+figure.sketch {
+  margin: var(--baseline) 0 calc(var(--baseline) * 1.5);
+  width: min(56rem, calc(100vw - var(--gutter) * 2));
+  border: 1px solid var(--rule);
+  background: #fff;
 }
 
-button:hover, .button:hover { background: var(--ink); color: var(--paper); }
+figure.sketch img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── Forms / buttons, kept plain ──────────────────────────────────────── */
+
+@layer base {
+  button, .button {
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--ink);
+    border-radius: 0;
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  button:hover, .button:hover { background: var(--ink); color: var(--paper); }
+}
+
+/* Text fields. Tailwind's reset removes every field's border, and nothing put
+   one back: the generated components leaned on a component library's `.input`
+   class that was never loaded, so on the log-in page the Email and Password
+   boxes were there but could not be seen. Plain, like the buttons.
+
+   In the base layer, and `:where()` so it weighs nothing: any utility on a field
+   (`border-slate-300`, `text-xs`, `rounded`) and any component's own rule still
+   wins. Unlayered, this would beat every Tailwind utility on every field. */
+@layer base {
+  :where(
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="hidden"], [type="file"], [type="color"], [type="submit"], [type="button"]),
+    select,
+    textarea
+  ) {
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--ink-soft);
+    border-radius: 0;
+    padding: 0.375rem 0.5rem;
+  }
+
+  :where(input, select, textarea):focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 1px;
+  }
+}
 
 /* ── Flash ─────────────────────────────────────────────────────────────── */
 
@@ -177,17 +256,15 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 
 .flash--error { border-left-color: #c00; }
 
-/* ── topo ──────────────────────────────────────────────────────────────── */
-/* The three.js stage is its own dark volume regardless of page theme — a
-   scatter plot of points reads far better against near-black. */
-
-.topo-stage {
-  width: 100%;
-  height: calc(100vh - 4rem);
-  position: relative;
-  overflow: hidden;
-  background: #0b1020;
+.flash__close {
+  border: 0;
+  padding: 0 0.25rem;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-faint);
 }
+
+.flash__close:hover { background: transparent; color: var(--ink); }
 
 /* ── atlas ─────────────────────────────────────────────────────────────── */
 /* Interior still uses Tailwind utilities inherited from adaptics; this
@@ -209,6 +286,100 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    that leaves ragged half-width text in a column that is already narrow. */
 .atlas p { max-width: none; }
 
+/* ── linked tabs: detach, and the note a pane carries ───────────────────── */
+/* The view bar: one line across the top of every pane. Pane note (if any),
+   then the share group, then Detach pushed to the right. Wraps when narrow. */
+.atlas-viewbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  padding: 0.375rem var(--gutter);
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* On the whole page and the view pane the bar is lifted into the masthead's row,
+   right-aligned, so Copy link sits in the nav and not in a line of its own under
+   it. The masthead is in the root layout, outside the LiveView, so this is done
+   by position, against the body: its top is the masthead's top padding (plus the
+   view pane's banner, when there is one). Not when narrow — the masthead wraps
+   there — and not in the timeline pane, which has no masthead. */
+@media (min-width: 48rem) {
+  body:has(> .wrap--full) { position: relative; }
+
+  .atlas:not(.atlas--bare) .atlas-viewbar {
+    position: absolute;
+    top: calc(var(--atlas-banner-h, 0px) + var(--baseline));
+    right: var(--gutter);
+    max-width: calc(100% - 26rem);
+    flex-wrap: nowrap;
+    padding: 0;
+    border: 0;
+    line-height: var(--baseline);
+  }
+
+  .atlas:not(.atlas--bare) .atlas-viewbar .atlas-share { flex-wrap: nowrap; }
+
+  .atlas:not(.atlas--bare) .atlas-viewbar .atlas-share__summary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .atlas:not(.atlas--bare) .atlas-viewbar :is(.atlas-share__copy, .atlas-detach) {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+.atlas-viewbar__pane {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  max-width: none;
+}
+
+.atlas-detach { font-size: 11px; cursor: pointer; color: var(--ink-soft); }
+
+.atlas-pane-note__link { font-size: 12px; }
+
+/* A pane is not the whole page, so it carries none of the site chrome. The
+   masthead is in the root layout, outside the LiveView; `:has()` lets a patch
+   in or out of a pane show and hide it. `footer` is here for when there is one. */
+body:has(.atlas--bare) > :is(.masthead, footer) { display: none; }
+
+/* The view pane's banner is fixed above the site nav (which the LiveView cannot
+   reach into), so the page makes room for exactly its height — and anything
+   sticky stops below it. */
+body:has(#atlas-pane-banner) {
+  padding-top: 2.75rem;
+  --atlas-banner-h: 2.75rem;
+  --atlas-controls-h: 2.75rem;
+}
+
+.atlas-pane-banner__action,
+.atlas-pane-banner__action:visited {
+  flex: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.atlas-pane-banner__action { font-weight: 600; }
+
+.atlas-pane-banner__action:hover { background: transparent; color: #cbd5e1; }
+
+/* Alone in its tab the block has nothing to stick above, and the window is its. */
+.atlas-controls--alone { position: static; box-shadow: none; }
+
 /* ── atlas sticky controls ─────────────────────────────────────────────── */
 /* Projection row + timeline + scrubber stay in view while the columns scroll.
    Withheld where it would cost more than it gives: on stacked (narrow) layouts
@@ -226,7 +397,567 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
     z-index: 20;
     box-shadow: 0 1px 0 var(--rule), 0 6px 12px -10px rgb(0 0 0 / 0.35);
   }
+
+  /* The canvas column sticks as well, so it has to stop under the controls
+     rather than behind them (--atlas-controls-h is published by a hook). It
+     holds more than a screenful — volume, map, graph — so it scrolls on its own;
+     a sticky block taller than the viewport would hide its lower half until the
+     page ran out. */
+  #atlas-canvas {
+    top: calc(var(--atlas-controls-h, 0px) + 1rem);
+    max-height: calc(100vh - var(--atlas-controls-h, 0px) - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* Column 1 too: the activity list is the long thing on the page, so it gets
+     its own scroll, under the controls, and the record and the scene stay put
+     while it moves. Inside it the day headings stick to ITS top, not the
+     page's. A little right padding keeps the scrollbar off the rows. */
+  #atlas-list {
+    position: sticky;
+    top: calc(var(--atlas-controls-h, 0px) + 1rem);
+    max-height: calc(100vh - var(--atlas-controls-h, 0px) - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.5rem;
+    scrollbar-width: thin;
+  }
+
+  #atlas-list .atlas-activity__dayhead { top: 0; }
 }
+
+/* ── capture (/atlas/log) ──────────────────────────────────────────────── */
+/* Phone first: one column, a line you can hit with a thumb, and nothing that
+   needs a pointer. It reads fine wide; it is not designed for wide. */
+.atlas-log {
+  max-width: 34rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.atlas-log__title { font-size: 22px; margin: 0 0 0.25rem; }
+.atlas-log__lede { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+.atlas-log__form { display: grid; gap: 0.625rem; }
+
+/* 16px, not smaller: below that iOS zooms the page when the field is focused. */
+.atlas-log__line {
+  width: 100%;
+  font-size: 16px;
+  padding: 0.75rem;
+  border: 2px solid var(--ink);
+}
+
+.atlas-log__draft { min-height: 2.25rem; }
+
+.atlas-log__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.atlas-log__hint {
+  margin: 0;
+  max-width: none;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.atlas-log__by {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.atlas-log__bylabel,
+.atlas-log__signed { font-size: 13px; color: var(--ink-soft); }
+
+.atlas-log__author { flex: 1; min-width: 0; font-size: 16px; }
+
+.atlas-log__submit {
+  margin-left: auto;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 0.5rem 1.25rem;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.atlas-log__submit:disabled { opacity: 0.35; cursor: default; }
+
+.atlas-log__error { margin: 0; font-size: 12px; color: #c00; }
+
+.atlas-log__tx {
+  border-left: 3px solid var(--rule);
+  padding-left: 0.75rem;
+  font-size: 12px;
+}
+
+.atlas-log__tx summary { cursor: pointer; color: var(--ink-soft); }
+
+.atlas-log__pairs {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.125rem 0.75rem;
+  margin: 0.5rem 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.atlas-log__pairs dt { color: var(--ink-faint); }
+.atlas-log__pairs dd { margin: 0; overflow-wrap: anywhere; }
+
+.atlas-log__count { margin: 0 0 0.5rem; max-width: none; font-size: 14px; }
+
+.atlas-log__thing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 12px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.atlas-log__thing:visited { color: var(--ink); }
+.atlas-log__thing:hover { border-color: var(--ink); }
+.atlas-log__n { font-variant-numeric: tabular-nums; color: var(--ink-faint); }
+
+.atlas-log__h2 { font-size: 13px; font-weight: 700; margin: 0 0 0.5rem; }
+
+.atlas-log__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-block: 1px solid var(--rule);
+}
+
+.atlas-log__entry + .atlas-log__entry { border-top: 1px solid var(--rule); }
+
+.atlas-log__entrylink {
+  display: grid;
+  gap: 0.0625rem;
+  padding: 0.5rem 0.25rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.atlas-log__entrylink:visited { color: var(--ink); }
+.atlas-log__entrylink:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+
+.atlas-log__time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.atlas-log__text { font-size: 14px; }
+
+/* The line just logged announces itself once, then is one of the list. */
+.atlas-log__entry.is-new { animation: atlas-log-new 1.6s ease-out 1; }
+
+@keyframes atlas-log-new {
+  from { background: color-mix(in srgb, var(--link) 18%, transparent); }
+  to { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-log__entry.is-new { animation: none; }
+}
+
+/* ── relationships on a record ─────────────────────────────────────────── */
+/* These ARE activity rows (`.atlas-activity`, `.atlas-activity__item`): same
+   rules, same three lines, same bar, hover and selected states. Only what a
+   relationship adds is here. */
+.atlas-rels { margin-top: 0.25rem; border-top: 1px solid var(--rule); }
+
+/* The verb between two names: lighter, so subject and object read as the ends. */
+.atlas-rel__claim em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+/* The open record's own relationship is selected, and goes nowhere. */
+.atlas-rel.is-own { cursor: default; }
+
+/* ── person card ───────────────────────────────────────────────────────── */
+/* The card is Tailwind; these two rules only undo global prose defaults, which
+   are unlayered and so beat any utility: the 3rem top margin on every h2. */
+.atlas-person { margin-bottom: 0.75rem; }
+.atlas-person h2 { margin: 0; }
+
+/* ── atlas panel heads ─────────────────────────────────────────────────── */
+/* Each panel says what question it answers. These were the subtext of the
+   projection row; they read better on the thing they describe than in a switch
+   between things that are all on screen. Quiet, so they caption, not compete. */
+.atlas-panel__question {
+  margin: 0 0 0.5rem;
+  max-width: none;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-faint);
+}
+
+.atlas-panelhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+}
+
+/* The checklist row, on its own rather than in a list: it hugs its label and
+   sits at the end of the heading line. Two classes, because `.atlas-srcfilter__item`
+   is declared later in this file and would otherwise win the tie. */
+.atlas-panelhead .atlas-panelhead__toggle {
+  display: inline-flex;
+  width: auto;
+  font-size: 12px;
+}
+
+/* ── atlas reader stepper ──────────────────────────────────────────────── */
+/* The pair sits together at the right edge, like the timeline's Prev / Next
+   above it: side by side there is no travel between them, and the two pairs
+   line up as the same control. Same size as those buttons, too. */
+.atlas-step {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+
+.atlas-step button { font-size: 12px; padding: 0.125rem 0.5rem; }
+
+.atlas-step button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.atlas-step button:disabled:hover { background: transparent; color: inherit; }
+
+/* ── atlas 3D scatter ──────────────────────────────────────────────────── */
+/* Its own dark volume regardless of page theme: points and axis
+   labels read against near-black in a way they do not against paper. */
+.atlas-scatter { margin-bottom: 1rem; }
+
+.atlas-scatter__stage {
+  position: relative;        /* the tooltip is absolutely placed inside it */
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  max-height: 24rem;
+  margin-top: 0.25rem;
+  border: 1px solid var(--rule);
+  background: #0b1020;
+  overflow: hidden;
+  touch-action: none;        /* a drag orbits the volume, not the page */
+}
+
+.atlas-scatter__stage canvas { display: block; cursor: grab; }
+
+.atlas-scatter__caption {
+  margin: 0.25rem 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.atlas-scatter__warn { color: var(--ink); font-weight: 600; }
+
+/* ── Axes bar ───────────────────────────────────────────────────────────── */
+/* x, y and z as three thin rows along the stage's BOTTOM border — not round it.
+   Each row is one line: the letter, a dropdown of what that axis carries, then
+   where it currently runs. The bar shares the stage's bottom edge, so it reads
+   as the stage's own border. */
+.atlas-frame { margin-top: 0.25rem; }
+.atlas-frame > .atlas-scatter__stage { margin-top: 0; }
+
+.atlas-axesbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--rule);
+  border-top: 0;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--ink-soft);
+}
+
+/* One line per axis: [x] [dropdown] [where it runs ……………]. The columns are
+   shared across the three rows so the dropdowns and the runs line up. */
+.atlas-axesbar__axis {
+  display: grid;
+  grid-template-columns: 0.75rem minmax(7rem, 11rem) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0 0.5rem;
+  min-width: 0;
+  padding: 0.125rem 0.5rem;
+}
+
+.atlas-axesbar__axis + .atlas-axesbar__axis { border-top: 1px solid var(--rule); }
+
+.atlas-frame__tag { font-weight: 700; color: var(--ink); text-transform: lowercase; }
+
+/* The input component wraps its select; the wrapper must not break the row. */
+.atlas-axesbar__axis > div,
+.atlas-axesbar__axis > label:not(.atlas-frame__tag) { display: contents; }
+
+.atlas-axesbar__select {
+  width: 100%;
+  min-width: 0;
+  padding: 0 1rem 0 0.125rem;
+  border: 0;
+  border-bottom: 1px dotted var(--ink-faint);
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.atlas-axesbar__select:hover,
+.atlas-axesbar__select:focus { border-bottom-color: var(--ink); outline: none; }
+
+.atlas-axesbar__runs {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-axesbar__axis.is-unused,
+.atlas-axesbar__axis.is-unused .atlas-frame__tag,
+.atlas-axesbar__axis.is-unused .atlas-axesbar__select { color: var(--ink-faint); }
+
+/* ── Saved modes ────────────────────────────────────────────────────────── */
+.atlas-modes__picker { flex: none; min-width: 8rem; font-size: 12px; }
+.atlas-modes__picker > div { display: contents; }
+
+.atlas-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  margin: 0 0 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-top: 0;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.atlas-modes__form { display: flex; flex: 1; align-items: baseline; gap: 0.5rem; min-width: 0; }
+.atlas-modes__form > div { flex: 1; min-width: 0; }
+.atlas-modes__form .atlas-compose__input { margin-top: 0; }
+.atlas-modes__save { flex: none; font-size: 12px; padding: 0.125rem 0.5rem; white-space: nowrap; }
+
+/* ── Axes legend ────────────────────────────────────────────────────────── */
+/* What a view's axes mean, in words, beside the view. One line: x · y · z. */
+.atlas-axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.875rem;
+  margin: 0 0 0.25rem;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.atlas-axes__axis { display: flex; align-items: baseline; gap: 0.3rem; }
+
+.atlas-axes dt {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-transform: lowercase;
+}
+
+.atlas-axes dd { margin: 0; }
+.atlas-axes__axis.is-unused { color: var(--ink-faint); }
+
+/* Spacetime: the scatter's stage, plus a layout switch beside the title. */
+.atlas-scene__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+}
+
+/* The layout switch spans the scene it switches: these are the ways of seeing
+   the whole stage, so they get its whole width and share it evenly, rather
+   than huddling in whatever the title leaves. */
+.atlas-scene__head .atlas-range__mode {
+  align-self: auto;
+  margin-bottom: 0;
+  flex: 1 0 100%;
+  order: 2;
+}
+
+/* Equal shares of that width, so the switch reads as one bar of options
+   rather than buttons of differing weight. `text-align`, not
+   `justify-content`: a button is not a flex container. */
+.atlas-scene__head .atlas-range__mode button { flex: 1; text-align: center; }
+
+/* In the PANEL the switch is a set of tabs, on the title's own row and at its
+   right-hand end, each as wide as its word. A bar across the full width said
+   "pick one of these big things"; these are views of the one scene named on the
+   left, so they sit beside that name, and the rule under the row ties the tabs to
+   the stage below. Still a radio group to a keyboard and a screen reader: one of
+   them is always on, and they all show the same panel. */
+.atlas-scene--panel .atlas-scene__head {
+  align-items: flex-end;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 0.375rem;
+}
+
+.atlas-scene--panel .atlas-scene__head h2 { margin-bottom: 0.25rem; }
+
+.atlas-scene--panel .atlas-scene__head .atlas-range__mode {
+  flex: 0 1 auto;
+  order: 0;
+  margin-left: auto;
+  margin-bottom: -1px; /* the active tab's underline sits ON the row's rule */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.atlas-scene--panel .atlas-scene__head .atlas-range__mode button {
+  flex: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.25rem 0.625rem;
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.atlas-scene--panel .atlas-scene__head .atlas-range__mode button:hover {
+  background: transparent;
+  color: var(--ink);
+  border-bottom-color: var(--rule);
+}
+
+.atlas-scene--panel .atlas-scene__head .atlas-range__mode button[aria-checked="true"] {
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--ink);
+}
+
+/* "My modes…" follows the tabs, at the same baseline. */
+.atlas-scene--panel .atlas-scene__head .atlas-modes__picker { margin-bottom: 0.125rem; }
+
+/* On the page's own paper, like the sticky timeline — not a dark stage apart. */
+.atlas-scene--panel .atlas-scatter__stage {
+  aspect-ratio: 16 / 11;
+  max-height: 30rem;
+  background: var(--paper);
+}
+
+/* The strip: the same component as the sticky timeline. On paper, not the dark
+   stage — it sits among the controls — and its height follows the busiest
+   moment, with the same 96px floor the DOM band had. */
+.atlas-scene--strip { margin: 0.25rem 0 0.5rem; }
+.atlas-scene--strip .atlas-scene__head { justify-content: flex-end; margin-bottom: 0.125rem; }
+
+.atlas-scene--strip .atlas-scatter__stage {
+  aspect-ratio: auto;
+  max-height: none;
+  /* Room for the busiest moment's stack, plus the axis and its type; never
+     under 96px. */
+  height: max(96px, calc(var(--lanes, 4) * 12px + 44px));
+  margin-top: 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+  touch-action: auto;      /* nothing to orbit: let the page scroll */
+}
+
+.atlas-scene--strip .atlas-scatter__stage canvas { cursor: default; }
+
+/* What lies past each end of the band. */
+/* Three things on one line: what lies earlier, how much of the record the band
+   spans, and what lies later. The switch is centred because it chooses between
+   the two ends either side of it. */
+.atlas-beyond {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin: -0.25rem 0 0.5rem;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.atlas-beyond__cap { font-size: 11px; font-variant-numeric: tabular-nums; }
+.atlas-beyond__cap.is-start { grid-column: 1; justify-self: start; }
+.atlas-beyond__cap.is-end { grid-column: 3; justify-self: end; text-align: right; }
+
+/* The span switch: one choice of two, drawn as a segmented pair. The real
+   radios are hidden but focusable, so the label carries the look while the
+   browser keeps arrow keys and single selection. */
+.atlas-fit {
+  grid-column: 2;
+  justify-self: center;
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.atlas-fit__option {
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--rule);
+  font-size: 11px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.atlas-fit__option + .atlas-fit__option { border-left: 0; }
+
+.atlas-fit__option:hover { border-color: var(--ink-soft); color: var(--ink); }
+
+.atlas-fit__option.is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+/* The input is hidden, so focus is drawn on the label around it. */
+.atlas-fit__option:focus-within {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
+}
+
+/* Nothing filtered: both spans are the same record, so the choice is moot.
+   Dimmed as a whole rather than per option — it is the question that does not
+   apply, not one of the answers. */
+.atlas-fit.is-moot { opacity: 0.45; }
+
+.atlas-fit__option.is-disabled { cursor: default; }
+
+.atlas-fit__option.is-disabled:hover {
+  border-color: var(--rule);
+  color: var(--ink-soft);
+}
+
+.atlas-fit__option.is-disabled.is-on:hover {
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.atlas-beyond__cap.is-edge { color: var(--ink-faint); cursor: help; }
+button.atlas-beyond__cap { cursor: pointer; color: var(--link); text-decoration-color: var(--link); }
+
 
 /* ── atlas projection selector ─────────────────────────────────────────── */
 /* Four mutually exclusive projections as a radio row. The real inputs are
@@ -348,9 +1079,127 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    free, so a reader can always see where the record ends and the paraphrase
    begins. */
 
-.atlas-explain { margin-top: var(--baseline); }
+/* The one machine voice in the app, and a local one: tinted and dashed so it
+   can never be mistaken for the record, with the model named in the header. */
+.atlas-explain {
+  --machine: #5b3fc4;
+  --machine-wash: #f6f3ff;
+  margin-top: var(--baseline);
+  padding: 0.625rem 0.75rem 0.75rem;
+  border: 1px dashed color-mix(in srgb, var(--machine) 45%, transparent);
+  border-radius: 0.5rem;
+  background: var(--machine-wash);
+}
 
-.atlas-explain__button { font-size: 12px; }
+.atlas-explain__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.atlas-explain__spark { color: var(--machine); font-size: 13px; }
+
+.atlas-explain__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--machine);
+}
+
+/* The badge is a button: it names the model, and opens the list to change it. */
+.atlas-explain__model {
+  display: inline-block;
+  cursor: pointer;
+  line-height: 1.5;
+  margin-right: 0.125rem;
+  padding: 0 0.375rem;
+  border: 1px solid color-mix(in srgb, var(--machine) 35%, transparent);
+  border-radius: 999px;
+  background: var(--paper);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--machine);
+  white-space: nowrap;
+}
+
+.atlas-explain__model:hover,
+.atlas-explain__model[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--machine) 10%, var(--paper));
+  color: var(--machine);
+  border-color: var(--machine);
+}
+
+.atlas-explain__caret { margin-left: 0.125rem; font-size: 8px; }
+
+.atlas-explain__models {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.125rem;
+  margin-top: 0.375rem;
+  padding: 0.25rem;
+  border: 1px solid color-mix(in srgb, var(--machine) 35%, transparent);
+  background: var(--paper);
+}
+
+.atlas-explain__option {
+  display: block;
+  width: 100%;
+  padding: 0.125rem 0.375rem;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.atlas-explain__option:hover {
+  background: color-mix(in srgb, var(--machine) 10%, transparent);
+  color: var(--ink);
+}
+
+.atlas-explain__option[aria-selected="true"] {
+  border-left-color: var(--machine);
+  font-weight: 700;
+  color: var(--machine);
+}
+
+.atlas-explain__models-note {
+  margin: 0;
+  padding: 0.125rem 0.375rem;
+  max-width: none;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.atlas-explain__button {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--machine);
+  border-radius: 0.375rem;
+  background: var(--machine);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.atlas-explain__button:hover { background: #4a31a8; color: #fff; }
+.atlas-explain .atlas-explain__loading,
+.atlas-explain .atlas-explain__result { border-left-color: var(--machine); }
+.atlas-explain .atlas-explain__skeleton {
+  background-image: linear-gradient(90deg, #e2dafc 0%, var(--paper) 40%, #e2dafc 80%);
+}
 
 /* Three lines of shimmer where the answer will appear. A skeleton beats a
    spinner here: it reserves the right amount of space so the card does not
@@ -436,6 +1285,21 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    left rule and weight rather than an outline, which keeps the scan down the
    left edge unbroken. */
 
+/* Each activity is an element — one fact, with its own date, claim, and source
+   — so the list is ruled, not run together. A hairline between rows rather than
+   a box around each: a rule says "this ends, the next begins" and costs one line,
+   where twenty-odd cards in a 17rem column would be mostly border. The rule
+   belongs to the row (`li`), the selection bar to the button inside it, so the
+   two never fight over the same edge. */
+.atlas-activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.atlas-activity > li + li { border-top: 1px solid var(--rule); }
+
 .atlas-activity__item {
   display: block;
   width: 100%;
@@ -443,21 +1307,23 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   border: 0;
   border-left: 3px solid transparent;
   border-radius: 0;
-  padding: 0.25rem 0 0.25rem 0.5rem;
+  padding: 0.5rem 0.25rem 0.5rem 0.5rem;
   background: transparent;
   font-size: 12px;
   line-height: 1.35;
   cursor: pointer;
 }
 
+/* The whole element answers the pointer, not just its edge. */
 .atlas-activity__item:hover {
-  background: transparent;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
   color: inherit;
-  border-left-color: var(--rule);
+  border-left-color: var(--ink-soft);
 }
 
 .atlas-activity__item.is-selected {
   border-left-color: var(--link);
+  background: color-mix(in srgb, var(--link) 6%, transparent);
   font-weight: 700;
 }
 
@@ -557,6 +1423,44 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* Occurred | lag | Observed, on one line: two clocks at half width each, and
+   the distance between them where the eye crosses. */
+.atlas-when {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.atlas-when__clock:last-child { text-align: right; }
+
+.atlas-when__time {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-when__absent { color: var(--ink-faint); font-style: italic; }
+
+.atlas-when__lag {
+  margin: 0;
+  padding: 0 0.375rem 0.125rem;
+  max-width: none;
+  border-bottom: 1px solid var(--rule);
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+/* The findings that are not the usual case carry a little more ink. */
+.atlas-when.is-unstated .atlas-when__lag,
+.atlas-when.is-before .atlas-when__lag { color: var(--ink); border-bottom-color: var(--ink); }
+.atlas-when.is-same .atlas-when__lag { color: var(--ink); }
 
 /* The glossary button inherits the label's treatment rather than looking like
    body text that happens to be clickable. */
@@ -668,29 +1572,35 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
    action someone takes deliberately, and the thing they need to know first is
    what the link reproduces, not its characters. */
 
+/* Pushed to the right end of the view bar: the view state in words, then the
+   button that copies it, then Detach. */
 .atlas-share {
-  margin-top: var(--baseline);
-  padding-top: 0.625rem;
-  border-top: 1px solid var(--rule);
-}
-
-.atlas-share__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: flex-end;
+  gap: 0.125rem 0.625rem;
+  min-width: 0;
+  margin-left: auto;
+  text-align: right;
 }
 
-.atlas-share__title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-faint);
-  margin: 0;
+/* An <a> dressed as the button it acts as: it is a link to this very view, so
+   it never reads as visited or underlined. */
+.atlas-share__copy,
+.atlas-share__copy:visited {
+  padding: 0.1rem 0.625rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.atlas-share__copy { font-size: 12px; padding: 0.1rem 0.5rem; }
+.atlas-share__copy:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
 
 /* Confirmation inverts the button rather than moving anything, so the layout
    does not shift under the cursor at the moment of clicking. */
@@ -700,24 +1610,12 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 }
 
 .atlas-share__summary {
+  margin: 0;
+  max-width: none;
   font-size: 12px;
   color: var(--ink-soft);
-  margin: 0.375rem 0 0.25rem;
-  max-width: none;
 }
 
-/* The address is present and selectable but deliberately quiet — it is a
-   fallback for hand-copying, not the main affordance. */
-.atlas-share__url {
-  display: block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  color: var(--ink-faint);
-  word-break: break-all;
-  text-decoration: none;
-}
-
-.atlas-share__url:hover { color: var(--link); text-decoration: underline; }
 
 /* ── structural coherence ─────────────────────────────────────────────── */
 /* UNMOUNTED. Indivisual.Atlas.Coherence still computes chains and diagnoses
@@ -935,16 +1833,64 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   box-shadow: 0 0 0 1px var(--rule);
 }
 
-.atlas-pin.is-affected .atlas-pin__dot { background: var(--ink-soft); }
+/* An icon marker: the glyph IS the mark. A map pin's tip is the coordinate, so
+   the box is shifted to put the tip there (the glyph's tip is at 10,19 of 20);
+   any other icon is centred on it, like the dot. */
+.atlas-pin__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  fill: var(--ink);
+  stroke: var(--paper);
+  stroke-width: 1.2;
+  paint-order: stroke;
+  transition: fill 120ms ease, transform 120ms ease;
+}
+
+.atlas-pin--icon { transform: translate(-11px, -11px); }
+.atlas-pin--place { transform: translate(-11px, -21px); }
+
+/* State, in the same two colours everywhere an entity is drawn — graph, map,
+   3D scene, lists. AFFECTED by the selected event: blue, filled, larger.
+   FOCUSED (the entity open in the reader): an amber ring. The map used grey for
+   affected and blue for focused, so blue meant one thing on the graph and
+   another here. */
+.atlas-pin.is-affected .atlas-pin__dot {
+  background: var(--affected);
+  border-color: var(--affected);
+  transform: scale(1.35);
+}
+
+.atlas-pin.is-affected .atlas-pin__icon { fill: var(--affected); transform: scale(1.25); }
+.atlas-pin--place.is-affected .atlas-pin__icon { transform-origin: 50% 95%; }
 
 .atlas-pin.is-focused .atlas-pin__dot {
-  background: var(--link);
-  border-color: var(--link);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--focus);
+}
+
+.atlas-pin.is-focused .atlas-pin__icon {
+  stroke: var(--focus);
+  stroke-width: 2.4;
 }
 
 .atlas-pin.is-focused .atlas-pin__label {
   font-weight: 700;
-  box-shadow: 0 0 0 1px var(--link);
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+.atlas-pin.is-affected .atlas-pin__label { box-shadow: 0 0 0 1px var(--affected); }
+.atlas-pin.is-affected.is-focused .atlas-pin__label { box-shadow: 0 0 0 2px var(--focus); }
+
+/* ── kind icons ────────────────────────────────────────────────────────── */
+/* Sized by the text it sits in, and sat on its baseline. */
+.atlas-kindicon {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  color: var(--ink-soft);
 }
 
 .atlas-map__caption {
@@ -1031,10 +1977,25 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 
 .atlas-marks {
   position: relative;
-  /* One row per lane, plus room for the tick labels underneath. */
-  height: calc(var(--lanes, 4) * 0.6rem + 1.25rem);
+  /* One row per lane, plus room for the tick labels underneath — but never
+     under 96px. The lane count follows the filters, so without a floor the
+     band shrinks to a sliver as the view narrows and everything below it
+     jumps. Marks hang from the axis at the bottom and ticks span top to axis,
+     so the spare height simply opens above them. */
+  height: max(96px, calc(var(--lanes, 4) * 0.6rem + 1.25rem));
   margin: 0.25rem 0 0.5rem;
   border-bottom: 1px solid var(--rule);
+}
+
+.atlas-marks__empty {
+  position: absolute;
+  inset: 0 0 1.25rem;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  max-width: none;
+  font-size: 12px;
+  color: var(--ink-faint);
 }
 
 .atlas-marks__mark {
@@ -1049,6 +2010,16 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   background: var(--paper);
   cursor: pointer;
 }
+
+/* Filtered out, but still drawn: the record has not changed, so the mark keeps
+   its place and loses its ink. Removing it would rescale the band and move
+   every other mark. */
+.atlas-marks__mark.is-filtered {
+  opacity: 0.25;
+  background: transparent;
+}
+
+.atlas-marks__mark.is-filtered:hover { opacity: 0.6; }
 
 .atlas-marks__mark:hover {
   border-color: var(--ink);
@@ -1080,6 +2051,17 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   white-space: nowrap;
 }
 
+/* The ends name the exact extent, so they read a shade stronger than the
+   calendar boundaries between them. The end label hangs leftward so it stays
+   inside the band; a lone date is centred on its mark. */
+.atlas-marks__tick.is-start .atlas-marks__tick-label,
+.atlas-marks__tick.is-end .atlas-marks__tick-label,
+.atlas-marks__tick.is-only .atlas-marks__tick-label { color: var(--ink-soft); }
+
+.atlas-marks__tick.is-end .atlas-marks__tick-label { left: auto; right: 0; }
+
+.atlas-marks__tick.is-only .atlas-marks__tick-label { transform: translateX(-50%); }
+
 .atlas-marks__overflow {
   position: absolute;
   right: 0;
@@ -1089,10 +2071,6 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   color: var(--ink-faint);
   max-width: none;
 }
-
-/* With marks showing, the list is a secondary index rather than the view. */
-.atlas-activity--compact .atlas-activity__item { font-size: 11px; padding-block: 0.125rem; }
-.atlas-activity--compact .atlas-activity__item span:last-child { display: none; }
 
 .atlas-activity__head {
   display: flex;
@@ -1109,8 +2087,9 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 .atlas-activity__head h2,
 .atlas-timeline__title,
 .atlas-modal__title,
-.atlas-share__title,
-#atlas-canvas-title {
+#atlas-canvas-title,
+#atlas-scene-title,
+#atlas-scatter-title {
   margin-top: 0;
 }
 
@@ -1264,18 +2243,55 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   --thumb-w: 0.75rem;
   --thumb-h: 1.25rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  /* [ By source + lane checkboxes | the bar + lane bars | in / out ].
+     The first column is capped so a long source title truncates instead of
+     squeezing the bar. */
+  grid-template-columns: minmax(7rem, 15rem) minmax(0, 1fr) auto;
   align-items: center;
   gap: 0 0.75rem;
 }
 
-.atlas-range.is-disabled { opacity: 0.4; }
 
 .atlas-range__bar {
   --a: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--from));
   --b: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--to));
   position: relative;
   height: 1.5rem;
+  /* Room for the handles' date labels, which hang above the bar. */
+  margin-top: 0.875rem;
+}
+
+/* Dates above the handles. Same thumb-width correction as the dots and the
+   fill, so a label is anchored to its handle's centre; `side` says which way
+   the text runs from there. */
+.atlas-range__labels {
+  position: absolute;
+  inset: auto 0 100%;
+  height: 0.875rem;
+  pointer-events: none;
+}
+
+.atlas-range__label {
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--x));
+  font-size: 10px;
+  line-height: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+  transition: left 80ms linear;
+}
+
+.atlas-range__label.is-left { transform: translateX(calc(-100% + var(--thumb-w) / 2)); }
+.atlas-range__label.is-right { transform: translateX(calc(var(--thumb-w) / -2)); }
+.atlas-range__label.is-center { transform: translateX(-50%); }
+
+/* An open bound reaches this date so far; it is not pinned to it. */
+.atlas-range__label.is-open { color: var(--ink-faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-range__label { transition: none; }
 }
 
 .atlas-range__track {
@@ -1331,6 +2347,16 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   background: var(--ink);
 }
 
+/* Filtered out: still there, plainly quieter — smaller and faint — so narrowing
+   to a few activities reads at a glance, not on inspection. */
+.atlas-range__dot:not(.is-read):not(.is-packed) {
+  width: 4px;
+  height: 4px;
+  opacity: 0.55;
+}
+
+.atlas-range__dot.is-packed:not(.is-read) { opacity: 0.55; }
+
 /* A packed dot stands for a run of events and says how many. */
 .atlas-range__dot.is-packed {
   display: grid;
@@ -1356,19 +2382,75 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 /* ── per-source lanes ── */
 /* The bar, fanned out. Lanes sit in the bar's own grid column so they are
    exactly its width; nothing else is needed to keep the axes aligned. */
+.atlas-range__fan,
+.atlas-range__mode { align-self: end; margin-bottom: 0.125rem; }
+
+/* Under the in/out pair, in the same column: it acts on the same range, and
+   putting it there keeps it out of the bar's row while staying beside what it
+   clears. */
+/* The in/out pair and the clear action on one line, in the bar's third
+   column: they all act on the same range. */
+.atlas-range__actions {
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  align-self: end;
+  margin-bottom: 0.125rem;
+}
+
+.atlas-range__actions .atlas-range__mode { align-self: auto; margin-bottom: 0; }
+
+/* A ✕ like the record's, sized to sit on the in/out row. */
+.atlas-range__clear {
+  font-size: 12px;
+  line-height: 1;
+  padding: 0.125rem 0.3rem;
+}
+
+/* Disabled reads as unavailable, not as a second kind of button: the same
+   shape, dimmed, with the pointer unchanged. */
+.atlas-range__clear:disabled {
+  cursor: default;
+  color: var(--ink-faint);
+  border-color: var(--rule);
+  background: transparent;
+}
+
+@media (max-width: 52rem) {
+  .atlas-range__actions { grid-column: 1; justify-self: start; }
+}
+
 .atlas-range__fan {
+  justify-self: start;
   font-size: 12px;
   padding: 0.125rem 0.5rem;
   white-space: nowrap;
 }
 
-.atlas-range__lanes {
-  grid-column: 1;
-  list-style: none;
-  margin: 0.125rem 0 0.25rem;
-  padding: 0;
-  animation: atlas-lanes-in 160ms ease-out;
+/* The list and its rows dissolve into the parent grid, so each row's checkbox
+   falls under "By source" and its bar falls exactly under the main bar. */
+.atlas-range__lanes,
+.atlas-range__lane { display: contents; }
+
+.atlas-range__lane > * { animation: atlas-lanes-in 160ms ease-out; }
+
+/* Smaller than the column-1 checklist it came from: beside a bar, a source's
+   name is a row label, not a heading. */
+.atlas-range__lane-check { grid-column: 1; min-width: 0; padding: 0; font-size: 10px; line-height: 1.3; }
+.atlas-range__lane-check .atlas-srcfilter__box { width: 0.5625rem; height: 0.5625rem; }
+.atlas-range__lane-check .atlas-srcfilter__n { font-size: 10px; }
+
+/* Shown on the folded toggle only while sources are filtered, so the filter is
+   never invisible. */
+.atlas-range__fan-count {
+  margin-left: 0.25rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
 }
+.atlas-range__lane-line { grid-column: 2; }
+
+.atlas-range__lane.is-off .atlas-range__lane-line { opacity: 0.35; }
 
 @keyframes atlas-lanes-in {
   from { opacity: 0; transform: translateY(-0.25rem); }
@@ -1376,25 +2458,7 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atlas-range__lanes { animation: none; }
-}
-
-.atlas-range__lane { margin: 0; }
-
-.atlas-range__lane-label {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
-  line-height: 1.2;
-  letter-spacing: 0.02em;
-  color: var(--ink-faint);
-}
-
-.atlas-range__lane-n {
-  margin-left: 0.25rem;
-  font-variant-numeric: tabular-nums;
+  .atlas-range__lane > * { animation: none; }
 }
 
 .atlas-range__lane-line {
@@ -1435,6 +2499,8 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 
 @media (max-width: 40rem) {
   .atlas-range { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+  .atlas-range__lane-check,
+  .atlas-range__lane-line { grid-column: 1; }
 }
 
 .atlas-range__fan:disabled {
@@ -1571,6 +2637,690 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
   color: var(--link);
 }
 
+/* ── Column 1 filters ───────────────────────────────────────────────────── */
+/* Sources, truth state and entity focus sit above the Activity heading: they
+   are things in their own right that narrow the list, not parts of it. The
+   gap before "Activity" is what says the list is their result. */
+.atlas-filters { margin-bottom: 1.25rem; }
+
+/* With no entity in focus the wrapper holds nothing, but its margin still took
+   up room — 20px of air above "Activity" that the other columns do not have.
+   (`:empty` would not match: the template leaves whitespace inside it.) */
+.atlas-filters:not(:has(> *)) { display: none; }
+.atlas-filters > :last-child { margin-bottom: 0; }
+
+/* ── New activity: the composer ─────────────────────────────────────────── */
+/* ── the two voices ───────────────────────────────────────────────────── */
+/* Two things can be written about the record, and they are not the same kind
+   of thing:
+     --machine (violet, dashed)  a paraphrase. It never enters the record.
+     --person  (teal, solid)     an annotation. It BECOMES the record, as its
+                                 own event with an author.
+   They share a shape — a filled button opening a tinted panel — so a reader
+   learns one pattern, and differ in colour and edge, so the difference between
+   a claim and a gloss is never a matter of reading the label. */
+/* Same shape as the machine button, in the other voice. Solid, not dashed:
+   what this writes is a real activity of the record, not a gloss on it. */
+.atlas-activity__new {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--person);
+  border-radius: 0.375rem;
+  background: var(--person);
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.atlas-activity__new:hover {
+  background: var(--person-hover);
+  border-color: var(--person-hover);
+  color: var(--paper);
+}
+
+/* Cancelling is a retreat, not an action: the filled state belongs to the
+   thing that writes. */
+.atlas-activity__new[aria-expanded="true"] {
+  background: transparent;
+  color: var(--person);
+}
+
+.atlas-activity__new[aria-expanded="true"]:hover {
+  background: var(--person-wash);
+  color: var(--person-hover);
+}
+
+/* The composer answers to its button, the way the machine panel answers to
+   its own: same shape, the other voice. Solid edges, because what is written
+   here becomes an activity of the record. */
+.atlas-compose {
+  display: grid;
+  /* A zero minimum: an implicit track is as wide as its widest unbreakable child,
+     and one long chip (an address) would push the whole form past its column. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  margin: 0 0 0.875rem;
+  padding: 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--person) 45%, transparent);
+  border-left: 3px solid var(--person);
+  border-radius: 0.5rem;
+  background: var(--person-wash);
+  font-size: 12px;
+  animation: atlas-lanes-in 160ms ease-out;
+}
+
+/* The submit is the moment of authorship, so it carries the voice. */
+.atlas-compose button[type="submit"] {
+  border-color: var(--person);
+  background: var(--person);
+  color: var(--paper);
+  border-radius: 0.375rem;
+}
+
+.atlas-compose button[type="submit"]:hover {
+  background: var(--person-hover);
+  border-color: var(--person-hover);
+  color: var(--paper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-compose { animation: none; }
+}
+
+.atlas-compose__types { display: grid; gap: 0.25rem; margin: 0; padding: 0; border: 0; }
+
+.atlas-compose__type {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.375rem;
+  align-items: baseline;
+  cursor: pointer;
+}
+
+.atlas-compose__type.is-disabled { color: var(--ink-faint); cursor: default; }
+.atlas-compose__type span { font-weight: 700; }
+
+.atlas-compose__type small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.atlas-compose label { font-size: 11px; color: var(--ink-soft); }
+
+.atlas-compose__input {
+  display: block;
+  width: 100%;
+  margin-top: 0.125rem;
+  padding: 0.25rem 0.375rem;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.atlas-compose__input:focus { outline: 1px solid var(--ink); border-color: var(--ink); }
+
+.atlas-compose__submit { justify-self: start; font-size: 12px; background: var(--ink); color: var(--paper); }
+.atlas-compose__submit:hover { background: var(--paper); color: var(--ink); }
+
+.atlas-compose__note { margin: 0; max-width: none; font-size: 11px; color: var(--ink-soft); }
+
+/* The note is the form. */
+.atlas-compose__body { font-size: 14px; line-height: 1.45; min-height: 7rem; }
+
+.atlas-compose__mentions {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  font-size: 12px;
+}
+
+/* In a 17rem column a chip must give way: it fills its row and its value
+   ellipsizes (the whole value is in its title), rather than holding the inline
+   chip's 16rem and running out of the form. */
+.atlas-compose__mentions li { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.atlas-compose__mentions .atlas-chipgroup { display: flex; min-width: 0; max-width: 100%; }
+.atlas-compose__mentions .atlas-entitychip { display: flex; flex: 0 1 auto; min-width: 0; }
+.atlas-compose__mentions .atlas-entitychip__name { flex: 0 1 auto; min-width: 0; max-width: none; }
+
+.atlas-compose__warn { flex-basis: 100%; color: #b45309; }
+
+/* ── kinds of annotation, as badges ─────────────────────────────────────── */
+/* One row of small pressable words. The pressed one is inked in; the rest are
+   outlines, so the row reads as "pick one" without a legend. */
+.atlas-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.375rem 0 0;
+  max-width: none;
+}
+
+.atlas-kind {
+  padding: 0 0.5rem;
+  border: 1px solid var(--ink-soft);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.atlas-kind:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+
+.atlas-kind[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.atlas-compose__error { margin: 0; max-width: none; font-size: 12px; color: #c00; }
+
+/* ── Truth state, as a bar in the sticky controls ───────────────────────── */
+/* One line: label and count, the chips, then all / none. Beside the timeline,
+   not inside it: a different question (how settled, not when). */
+.atlas-truthfilter--bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0.375rem var(--gutter) 0.5rem;
+  border-bottom: 0;
+}
+
+.atlas-truthfilter--bar .atlas-srcfilter__head { margin: 0; flex: none; }
+.atlas-truthfilter--bar .atlas-truthfilter__chips { flex: 1; }
+.atlas-truthfilter--bar .atlas-truthfilter__note { flex-basis: 100%; margin: 0; }
+.atlas-truthfilter--bar .atlas-srcfilter__head .atlas-sourcenav__clear { margin-left: 0; }
+
+/* ── Verbs and nouns ────────────────────────────────────────────────────── */
+/* Plain ink: a part of speech is not a truth state, and must not borrow one's
+   colour. The marks are the scene's — sphere for an activity, diamond for an
+   entity — so the list, the filter and the 3D view speak one vocabulary. */
+.atlas-speechchip { border-color: var(--ink-faint); color: var(--ink); background: transparent; }
+
+/* Two bars in a row read as one block of filters, not two boxes. */
+.atlas-truthfilter--bar + .atlas-truthfilter--bar { padding-top: 0; }
+
+/* ── Entity focus chip ──────────────────────────────────────────────────── */
+/* View state with its own way out, on the list it narrows. */
+.atlas-entitychip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: baseline;
+  gap: 0.375rem;
+  max-width: none;
+  margin: 0 0 0.625rem;
+  /* Even now the ✕ is outside: the tighter right side was room for it. */
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--ink);
+  border-left-width: 3px;
+  font-size: 12px;
+}
+
+/* ── applied filters ───────────────────────────────────────────────────── */
+/* What is narrowing the list, on the list: read-only chips, then what they
+   leave. One line when it fits; it wraps rather than scrolls. */
+.atlas-applied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  font-size: 12px;
+}
+
+/* The label sits on its own line: the chips are the content and a label
+   sharing their row competes with them for the eye, then pushes the count
+   onto a third line anyway once two filters are on. */
+/* The label and the link to this view share the first line: a link to a view
+   is its filters, and the chips below name what it carries. */
+.atlas-applied__action { margin-left: auto; }
+
+.atlas-applied__label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.atlas-applied__list {
+  display: contents;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.atlas-applied__list > li { min-width: 0; max-width: 100%; }
+
+/* A chip with no ✕ reports a filter; it does not offer to change it. The rule is
+   lighter, so it does not read as something to press. */
+.atlas-entitychip.is-readonly {
+  border-color: var(--rule);
+  border-left-color: var(--ink-soft);
+  padding-right: 0.5rem;
+}
+
+.atlas-entitychip.is-readonly .atlas-entitychip__name { font-weight: 600; }
+
+/* On the timeline's header line: the same chip, without the bottom margin. */
+.atlas-entitychip--inline { margin: 0; padding-block: 0.0625rem; }
+.atlas-entitychip--inline .atlas-entitychip__name { flex: 0 1 auto; max-width: 16rem; }
+
+.atlas-entitychip__label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.atlas-entitychip__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+/* The ✕ and the chip it removes: siblings, so the chip's border stays whole
+   and the button reads as acting ON it rather than being part of it. */
+.atlas-chipgroup {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+
+.atlas-entitychip__clear {
+  flex: none;
+  border: 0;
+  padding: 0 0.2rem;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ink-faint);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+/* Quiet until wanted: the chip is the content, the ✕ is an offer. */
+.atlas-entitychip__clear:hover {
+  background: transparent;
+  color: var(--ink);
+}
+
+/* ── Truth-state filter ─────────────────────────────────────────────────── */
+/* The source checklist's contract, drawn as chips: a chip out of the filter
+   goes quiet rather than disappearing, so the row never reflows. */
+.atlas-truthfilter__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.atlas-truthfilter__note {
+  margin: 0.375rem 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink);
+  max-width: none;
+}
+
+/* ── truth badge ───────────────────────────────────────────────────────── */
+/* One look for a truth state wherever it appears: on an activity row, in the
+   entity context, on the record — and as a chip in the filter, which is the same
+   badge made pressable. The colours come from `truth_classes/1`; this is the
+   shape. A filter chip that looked different from the badges it filters would
+   ask the reader to learn the vocabulary twice. */
+.atlas-truth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.25rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.25rem;
+  font-size: 10px;
+  /* Its own weight, not its row's: a selected activity row goes bold, and a
+     badge that went with it got wider and shifted the line. The colour already
+     says which state it is. */
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* The colours live here too, keyed by state, and not only in `truth_classes/1`.
+   Those are Tailwind utilities, which sit in a cascade layer — and an unlayered
+   `button` rule beats any layered one, so a badge that is a <button> came out
+   black on white while the same badge as a <span> kept its colour. One hue per
+   state; border and ground are mixed from it, so they hold on a dark page too. */
+.atlas-truth[data-truth] {
+  color: var(--truth);
+  border-color: color-mix(in srgb, var(--truth) 45%, transparent);
+  background: color-mix(in srgb, var(--truth) 9%, transparent);
+}
+
+.atlas-truth[data-truth="observed"] { --truth: #047857; }
+.atlas-truth[data-truth="reported"] { --truth: #0369a1; }
+.atlas-truth[data-truth="proposed"] { --truth: #b45309; }
+.atlas-truth[data-truth="adopted"] { --truth: #4338ca; }
+.atlas-truth[data-truth="delivered"] { --truth: #0f766e; }
+.atlas-truth[data-truth="superseded"] { --truth: #4b5563; }
+
+@media (prefers-color-scheme: dark) {
+  .atlas-truth[data-truth] { color: color-mix(in srgb, var(--truth) 45%, white); }
+}
+
+/* On the record, where it is a field's value rather than a row's tag. */
+.atlas-truth--lg {
+  padding: 0 0.375rem;
+  font-size: inherit;
+}
+
+/* The badge, pressable. Only what being a control adds. */
+.atlas-truthfilter__chip {
+  cursor: pointer;
+  transition: opacity 120ms ease, filter 120ms ease;
+}
+
+/* The truth colours stay on hover; the global button hover would ink them out. */
+.atlas-truthfilter__chip:hover {
+  color: var(--truth);
+  background: color-mix(in srgb, var(--truth) 18%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .atlas-truthfilter__chip:hover { color: color-mix(in srgb, var(--truth) 45%, white); }
+}
+
+.atlas-truthfilter__chip[aria-checked="false"] {
+  opacity: 0.4;
+  filter: grayscale(1);
+  text-decoration: line-through;
+}
+
+.atlas-truthfilter__chip[aria-checked="false"]:hover { opacity: 0.7; }
+
+/* With nothing checked, the chips are the next thing to press. Struck through
+   and greyed they would read as disabled — the opposite of what "none" is for. */
+.atlas-truthfilter.is-none .atlas-truthfilter__chip[aria-checked="false"] {
+  opacity: 0.85;
+  filter: none;
+  text-decoration: none;
+}
+
+.atlas-truthfilter.is-none .atlas-truthfilter__chip[aria-checked="false"]:hover { opacity: 1; }
+.atlas-truthfilter__chip[aria-disabled="true"] { cursor: default; }
+.atlas-truthfilter__chip.is-empty { border-style: dashed; }
+
+.atlas-truthfilter__n { font-variant-numeric: tabular-nums; opacity: 0.7; }
+
+.atlas-truthfilter__key {
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: help;
+}
+
+.atlas-truthfilter__key:hover { background: transparent; color: var(--link); }
+
+/* ── Entity context / view overview (reader column) ─────────────────────── */
+.atlas-entityctx,
+.atlas-overview {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.atlas-entityctx__summary { margin: 0.25rem 0; font-size: 12px; color: var(--ink-soft); }
+
+.atlas-entityctx__sources,
+.atlas-entityctx__list { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+
+.atlas-entityctx__sources li { color: var(--ink-soft); }
+
+.atlas-entityctx__heading {
+  margin: 0.625rem 0 0.25rem;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.atlas-entityctx__n { margin-left: 0.25rem; font-variant-numeric: tabular-nums; }
+
+.atlas-entityctx__none { margin: 0.25rem 0 0; font-size: 12px; color: var(--ink-soft); }
+
+.atlas-entityctx__event {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.125rem 0;
+  border: 0;
+  text-align: left;
+  font-size: 12px;
+}
+
+.atlas-entityctx__event:hover { background: transparent; color: var(--link); }
+
+.atlas-overview__facts { margin: 0.375rem 0; font-size: 12px; }
+.atlas-overview__facts > div { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: 0.5rem; }
+.atlas-overview__facts dt { color: var(--ink-faint); }
+.atlas-overview__facts dd { margin: 0; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+
+/* The record's close button: a modal's ✕ on something that is not a modal. */
+.atlas-record { position: relative; }
+
+/* The ✕ has its own line above the record. */
+.atlas-record__bar { display: flex; justify-content: flex-end; margin: 0 0 0.25rem; max-width: none; }
+.atlas-record__close { position: static; border-radius: 0.25rem; color: var(--ink-soft); }
+
+/* Quiet on hover: a light grey wash, not the modal's inverted black. */
+.atlas-record__close:hover { background: #ececec; color: var(--ink); }
+
+/* Room for the ✦ floated in the identity block's top right. */
+.atlas-record__type { padding-right: 1.75rem; }
+
+/* ── the record, in four parts ─────────────────────────────────────────── */
+/* 1. WHAT IT IS — the identity block. Monospace-leaning, boxed, ruled on the
+   left in ink: it reads as a typed object's header, not as prose. */
+.atlas-record__what {
+  position: relative;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--ink);
+  background: #fafafa;
+}
+
+.atlas-record__speechword { cursor: help; }
+
+.atlas-record__what .atlas-record__type { margin-bottom: 0.25rem; }
+
+.atlas-record__speech {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 0 0 0.375rem;
+  max-width: none;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.atlas-record__id { margin: 0; }
+
+.atlas-record__id dt {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+.atlas-record__id dt .atlas-term {
+  font-size: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+.atlas-record__id dd { margin: 0.05rem 0 0; font-size: 12px; min-width: 0; overflow-wrap: anywhere; }
+
+/* 2. WHAT IT SAYS — a post: the headline a size up, the body at reading size. */
+.atlas-record__title { font-size: 17px; }
+
+/* 3. ABOUT IT — metadata, under a small heading and a rule, so the line between
+   what the record says and what is known about it is drawn. */
+.atlas-record__section {
+  margin: var(--baseline) 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--rule);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.atlas-fields--about { margin-top: 0.5rem; }
+
+/* 4. WHAT IT STANDS ON — provenance, last: a footing under a heavy rule. */
+.atlas-record__foundation {
+  margin-top: var(--baseline);
+  padding: 0.5rem 0.625rem;
+  border-top: 2px solid var(--ink);
+  background: #fafafa;
+}
+
+/* ── intelligence, available ───────────────────────────────────────────── */
+/* The purple ✦ beside the close button, and the panel it opens: the explain
+   card, floating over the top of the record instead of waiting at its foot. */
+.atlas-explain__spark-button {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  display: grid;
+  place-items: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  border: 1px solid #5b3fc4;
+  border-radius: 999px;
+  background: #f6f3ff;
+  color: #5b3fc4;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.atlas-explain__spark-button:hover,
+.atlas-explain__spark-button.is-open { background: #5b3fc4; color: #fff; }
+
+.atlas-record__what > .atlas-explain {
+  position: absolute;
+  top: 2.125rem;
+  right: -1px;
+  left: -3px;
+  z-index: 20;
+  margin-top: 0;
+  box-shadow: 0 10px 30px rgb(17 17 17 / 0.18);
+}
+
+.atlas-activity__all { display: block; }
+
+/* Days. The date is a heading, said once; it sticks under the page's controls
+   while its rows scroll, so the day you are in is always named. */
+.atlas-activity__day { margin: 0; }
+.atlas-activity__day + .atlas-activity__day { margin-top: 0.5rem; }
+
+.atlas-activity__dayhead {
+  position: sticky;
+  top: calc(var(--atlas-controls-h, 0px));
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.125rem 0;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.atlas-activity__daycount { font-weight: 400; color: var(--ink-faint); }
+
+/* The heading is a button across the whole line: caret, date, then the count
+   pushed to the right. */
+.atlas-activity__daytoggle {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.atlas-activity__daytoggle:hover { background: transparent; color: var(--link); }
+.atlas-activity__daytoggle .atlas-activity__daycount { margin-left: auto; }
+.atlas-activity__daycaret { width: 0.75rem; font-size: 9px; color: var(--ink-faint); }
+
+.atlas-activity__days {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+  max-width: none;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.atlas-activity__days .atlas-sourcenav__clear { font-size: 11px; letter-spacing: 0; text-transform: none; }
+
+.atlas-activity__dayrows { list-style: none; margin: 0; padding: 0; }
+.atlas-activity__dayrows > li + li { margin-top: 0.25rem; }
+
+/* Why the list is empty, and the way back. */
+.atlas-activity__empty {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px dashed var(--rule);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.atlas-activity__empty p { margin: 0 0 0.25rem; }
+.atlas-activity__empty ul { list-style: none; margin: 0 0 0.5rem; padding: 0; color: var(--ink); }
+.atlas-activity__empty li::before { content: "· "; color: var(--ink-faint); }
+.atlas-activity__empty button { font-size: 12px; padding: 0.125rem 0.5rem; }
+
 /* ── Activity source checklist ──────────────────────────────────────────── */
 /* The compact copy of the source filter, on the list it filters. One line per
    source: box, title, count. Titles truncate rather than wrap — the full row
@@ -1650,5 +3400,67 @@ button:hover, .button:hover { background: var(--ink); color: var(--paper); }
 
 .atlas-srcfilter__n {
   font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+/* ── verbs and nouns, named ────────────────────────────────────────────── */
+/* Under the Events / Entities chips: the words themselves. Two rows, each a
+   wrapping run of small words; an entity is a button (it focuses), a verb is
+   only said. */
+.atlas-speechchip__aka { font-size: 10px; color: var(--ink-faint); }
+
+.atlas-speechwords { flex-basis: 100%; font-size: 11px; }
+.atlas-speechwords > summary { cursor: pointer; color: var(--ink-faint); }
+.atlas-speechwords__parts { margin: 0.25rem 0 0; display: grid; gap: 0.125rem; }
+
+.atlas-speechwords__part {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.atlas-speechwords__part dt { color: var(--ink-soft); white-space: nowrap; }
+
+.atlas-speechwords__part dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.625rem;
+}
+
+.atlas-speechwords__word {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+button.atlas-speechwords__word { color: var(--link); cursor: pointer; }
+button.atlas-speechwords__word:hover { background: transparent; text-decoration: underline; }
+button.atlas-speechwords__word.is-focus { font-weight: 600; }
+.atlas-speechwords__none { color: var(--ink-faint); font-style: italic; }
+
+/* Filtered out is shown, not removed. */
+.atlas-speechwords__part.is-out .atlas-speechwords__word {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+
+/* ── the feed a record came in ─────────────────────────────────────────── */
+/* Name and place in words first; the walk; then the raw id and ordering key,
+   small and monospace — the structured fact under the words. */
+.atlas-stream { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.125rem 0.5rem; }
+.atlas-stream__name { font-weight: 600; }
+.atlas-stream__place { color: var(--ink-soft); }
+.atlas-stream__nav { display: flex; gap: 0.625rem; flex-basis: 100%; font-size: 11px; }
+.atlas-stream__nav:empty { display: none; }
+
+.atlas-stream__raw {
+  flex-basis: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
   color: var(--ink-faint);
 }

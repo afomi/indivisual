@@ -1,0 +1,78 @@
+<%!-- Always on: one point per event in view, in a volume of three
+opposing-pole axes. The hook owns the WebGL canvas, so the container is
+phx-update="ignore" and the data crosses as attributes — the same
+arrangement as the map below. Positions and axes are placeholders, and
+the caption says so: a reader must never be left to infer that where a
+point sits means something. --%>
+<section
+  id="atlas-scatter-wrap"
+  class="atlas-scatter"
+  aria-labelledby="atlas-scatter-title"
+>
+  <h2
+    id="atlas-scatter-title"
+    class="text-sm font-semibold"
+  >
+    Space
+    <span class="font-normal text-slate-500">
+      · {length(@scatter.points)} events
+    </span>
+  </h2>
+  <div
+    id="atlas-scatter"
+    class="atlas-scatter__stage"
+    phx-hook=".Scatter3D"
+    phx-update="ignore"
+    data-axes={Jason.encode!(@scatter.axes)}
+    data-points={
+      Jason.encode!(
+        IndivisualWeb.AtlasLive.scatter_points(@scatter, @events, @selected, @selected_index)
+      )
+    }
+    role="img"
+    aria-label={"3D scatter of #{length(@scatter.points)} events. Positions are placeholders. The activity list holds the same events."}
+  >
+  </div>
+  <p
+    id="atlas-scatter-caption"
+    class="atlas-scatter__caption"
+  >
+    <%= if @scatter.basis == :placeholder do %>
+      <span class="atlas-scatter__warn">
+        Positions and axes are placeholders.
+      </span>
+      Each point is placed by a hash of its event id, not by anything the event says.
+    <% end %>
+    Drag to orbit, scroll to zoom, click a point to open its record.
+  </p>
+
+  <script :type={Phoenix.LiveView.ColocatedHook} name=".Scatter3D">
+    // `@` is aliased to assets/ in the esbuild config; three.js resolves from
+    // there, which it would not from _build where this hook is extracted.
+    import { createScatter } from "@/js/atlas_scatter.js"
+
+    export default {
+      mounted() {
+        this.scatter = createScatter(this.el, {
+          onSelect: (id) => this.pushEvent("select_event", { id })
+        })
+        this.draw()
+      },
+
+      updated() {
+        this.draw()
+      },
+
+      draw() {
+        this.scatter.update({
+          axes: JSON.parse(this.el.dataset.axes || "[]"),
+          points: JSON.parse(this.el.dataset.points || "[]")
+        })
+      },
+
+      destroyed() {
+        if (this.scatter) { this.scatter.destroy(); this.scatter = null }
+      }
+    }
+  </script>
+</section>

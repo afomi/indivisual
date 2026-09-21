@@ -1,0 +1,270 @@
+<Layouts.app
+  flash={@flash}
+  current_scope={assigns[:current_scope]}
+>
+  <div
+    id="atlas-log"
+    class="atlas-log"
+  >
+    <header class="atlas-log__head">
+      <h1 class="atlas-log__title">
+        Log
+      </h1>
+      <p class="atlas-log__lede">
+        One line: what you did, to what, and when.
+        It becomes an activity in the record, in the same shape as every other.
+      </p>
+    </header>
+
+    <%!-- The line is the interface. Everything else on the page is either what
+    the line was read as, or what earlier lines have added up to. --%>
+    <.form
+      for={%{}}
+      as={:capture}
+      id="atlas-log-form"
+      phx-change="parse"
+      phx-submit="log"
+      class="atlas-log__form"
+    >
+      <label
+        for="atlas-log-line"
+        class="sr-only"
+      >
+        What happened
+      </label>
+      <input
+        type="text"
+        id="atlas-log-line"
+        name="capture[line]"
+        value={@line}
+        class="atlas-log__line"
+        placeholder="met Jane Doe at Carroll Way yesterday 3pm"
+        autocomplete="off"
+        autocapitalize="off"
+        enterkeyhint="done"
+        phx-debounce="150"
+        phx-mounted={JS.focus()}
+      />
+
+      <%!-- The parse, shown back before anything is written. A wrong guess is
+      fixed by editing the line; nothing here is a second way to say it. --%>
+      <div
+        id="atlas-log-draft"
+        class="atlas-log__draft"
+        aria-live="polite"
+      >
+        <%= if @draft do %>
+          <ul
+            class="atlas-log__chips"
+            role="list"
+          >
+            <li>
+              <AtlasComponents.filter_chip
+                id="atlas-log-verb"
+                label="Did"
+                value={verb_words(@draft.verb)}
+                count={@draft.as2}
+                title={
+                  if(@draft.as2,
+                    do: "ActivityStreams: #{@draft.as2}",
+                    else: "No exact ActivityStreams verb; ours stands."
+                  )
+                }
+                inline
+              />
+            </li>
+            <li :for={{object, i} <- Enum.with_index(@draft.objects)}>
+              <AtlasComponents.filter_chip
+                id={"atlas-log-object-#{i}"}
+                filter={if object.known?, do: "known", else: "new"}
+                label={if object.known?, do: "To", else: "New"}
+                kind={object.kind}
+                value={object.label}
+                count={object.kind}
+                title={
+                  if(object.known?,
+                    do: "#{object.ref} is already in the record; this links to it.",
+                    else: "#{object.ref} is new. Logging this registers it first."
+                  )
+                }
+                inline
+              />
+            </li>
+            <li>
+              <AtlasComponents.filter_chip
+                id="atlas-log-when"
+                label="When"
+                value={stamp(@draft.occurred_at, @tz_offset)}
+                count={if @draft.timed?, do: nil, else: "now"}
+                inline
+              />
+            </li>
+          </ul>
+          <p
+            :if={is_nil(@draft.phrase)}
+            id="atlas-log-noverb"
+            class="atlas-log__hint"
+          >
+            No verb recognised, so this is a note.
+            Start with one to say what happened: {Capture.verbs()
+            |> Enum.take(8)
+            |> Enum.join(", ")}…
+          </p>
+        <% else %>
+          <p class="atlas-log__hint">
+            Start with a verb.
+            Name things as the record names them and they link up; anything new is added.
+          </p>
+        <% end %>
+      </div>
+
+      <div class="atlas-log__by">
+        <%= if @signed_in? do %>
+          <span
+            id="atlas-log-author"
+            class="atlas-log__signed"
+          >
+            as <strong>{@author}</strong>
+          </span>
+        <% else %>
+          <label
+            for="atlas-log-author"
+            class="atlas-log__bylabel"
+          >
+            as
+          </label>
+          <input
+            type="text"
+            id="atlas-log-author"
+            name="capture[author]"
+            value={@author}
+            class="atlas-log__author"
+            placeholder="your name"
+            autocomplete="nickname"
+            phx-debounce="300"
+          />
+        <% end %>
+        <button
+          type="submit"
+          id="atlas-log-submit"
+          class="atlas-log__submit"
+          disabled={is_nil(@draft) or @author == ""}
+        >
+          Log it
+        </button>
+      </div>
+
+      <p
+        :for={{field, message} <- @errors}
+        class="atlas-log__error"
+        role="alert"
+      >
+        {field}: {message}
+      </p>
+
+      <p
+        :if={not @signed_in?}
+        id="atlas-log-public"
+        class="atlas-log__hint"
+      >
+        This is a prototype: what you log here is public, under the name you type.
+        Signed-in, private logs come next.
+      </p>
+    </.form>
+
+    <%!-- The same activity, as the data of a transaction. Read-only, and nothing
+    here touches a chain: it shows that the shape is already the one a wallet
+    would be handed (`Indivisual.Atlas.MAP`). --%>
+    <details
+      :if={@preview}
+      id="atlas-log-tx"
+      class="atlas-log__tx"
+    >
+      <summary>
+        As transaction data · {@preview.bytes} bytes
+      </summary>
+      <dl class="atlas-log__pairs">
+        <%= for {key, value} <- @preview.pairs do %>
+          <dt>{key}</dt>
+          <dd>{value}</dd>
+        <% end %>
+      </dl>
+      <p class="atlas-log__hint">
+        MAP key-values in an OP_RETURN: refs, a time, and a hash.
+        What you wrote stays off-chain.
+      </p>
+    </details>
+
+    <%!-- Accumulation is the point, so it is on the page. --%>
+    <section
+      :if={@summary.activities > 0}
+      id="atlas-log-summary"
+      class="atlas-log__summary"
+      aria-label="What your log adds up to"
+    >
+      <p class="atlas-log__count">
+        <strong>{@summary.activities}</strong>
+        {if @summary.activities == 1, do: "activity", else: "activities"} touching
+        <strong>{@summary.entities}</strong>
+        {if @summary.entities == 1, do: "thing", else: "things"}
+      </p>
+      <ul
+        class="atlas-log__chips"
+        role="list"
+      >
+        <li :for={{ref, label, kind, n} <- @summary.things}>
+          <.link
+            navigate={~p"/atlas?#{[entity: ref]}"}
+            class="atlas-log__thing"
+          >
+            <AtlasComponents.entity_icon kind={kind} />
+            {label}
+            <span class="atlas-log__n">{n}</span>
+          </.link>
+        </li>
+      </ul>
+    </section>
+
+    <section
+      id="atlas-log-mine"
+      class="atlas-log__mine"
+      aria-labelledby="atlas-log-mine-title"
+    >
+      <h2
+        id="atlas-log-mine-title"
+        class="atlas-log__h2"
+      >
+        {if @author == "", do: "Your log", else: "#{@author}'s log"}
+      </h2>
+      <%= if @mine == [] do %>
+        <p class="atlas-log__hint">
+          Nothing logged yet.
+        </p>
+      <% else %>
+        <ol
+          class="atlas-log__list"
+          role="list"
+        >
+          <li
+            :for={event <- @mine}
+            id={"atlas-log-entry-#{event.event_id}"}
+            class={["atlas-log__entry", event.event_id == @just_logged && "is-new"]}
+          >
+            <.link
+              navigate={~p"/atlas?#{[event: event.event_id]}"}
+              class="atlas-log__entrylink"
+            >
+              <time
+                datetime={DateTime.to_iso8601(Event.effective_time(event))}
+                class="atlas-log__time"
+              >
+                {stamp(Event.effective_time(event), @tz_offset)}
+              </time>
+              <span class="atlas-log__text">{Event.title(event)}</span>
+            </.link>
+          </li>
+        </ol>
+      <% end %>
+    </section>
+  </div>
+</Layouts.app>

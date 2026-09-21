@@ -18,15 +18,12 @@ defmodule IndivisualWeb.AtlasLegendTest do
     refute has_element?(view, "#atlas-legend"), "the legend should be closed by default"
   end
 
-  test "the button sits with the activity list it explains, not in the projection row",
-       %{conn: conn} do
-    {:ok, view, html} = live(conn, ~p"/atlas")
+  test "the button sits on the truth-state filter it explains", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/atlas")
 
     refute has_element?(view, "#atlas-projection-nav #atlas-legend-open")
-
-    at = fn id -> html |> :binary.match(~s(id="#{id}")) |> elem(0) end
-    assert at.("atlas-activity-sources") < at.("atlas-legend-open")
-    assert at.("atlas-legend-open") < at.("atlas-activity")
+    # The key to the states lives with the filter on them, in the sticky controls.
+    assert has_element?(view, "#atlas-controls #atlas-activity-truth #atlas-legend-open")
   end
 
   test "opening shows a dialog documenting every truth state", %{conn: conn} do

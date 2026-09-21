@@ -1,0 +1,18 @@
+<dl
+  id={@id}
+  class="atlas-axes"
+  aria-label="What each axis means"
+>
+  <%= for {axis, meaning} <- [x: @x, y: @y, z: @z], meaning != :omit do %>
+    <div class={["atlas-axes__axis", is_nil(meaning) && "is-unused"]}>
+      <dt>{axis}</dt>
+      <dd>
+        <%= if meaning do %>
+          {meaning}
+        <% else %>
+          not used
+        <% end %>
+      </dd>
+    </div>
+  <% end %>
+</dl>

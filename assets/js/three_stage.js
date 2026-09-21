@@ -122,5 +122,14 @@ export function createStage(container, options = {}) {
   tooltip.style.cssText = TOOLTIP_CSS;
   container.appendChild(tooltip);
 
-  return { scene, camera, renderer, controls, tooltip, resize };
+  // For stages that come and go (a LiveView hook); a full-page stage never calls it.
+  function dispose() {
+    window.removeEventListener("resize", resize);
+    controls.dispose();
+    renderer.dispose();
+    renderer.domElement.remove();
+    tooltip.remove();
+  }
+
+  return { scene, camera, renderer, controls, tooltip, resize, dispose };
 }

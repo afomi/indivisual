@@ -1,0 +1,258 @@
+<%!-- DRAFT. High-level on purpose: the ideas, not the modules.
+The mechanics live in CLAUDE.md, ARCHITECTURE.md and docs/VIEWS.md.
+The figure is a PNG of the "Atlas: activity stream + structured elements" frame
+in docs/chain-permanence-vs-privacy.tldr; re-export it when that frame changes. --%>
+<Layouts.app
+  flash={@flash}
+  current_scope={@current_scope}
+>
+  <article id="atlas-about">
+    <h1>The ideas behind Atlas</h1>
+
+    <p>
+      Activity stream + structured elements = real-time, contextual tools.
+    </p>
+
+    <p class="muted">
+      Record what happened, once, in order.
+      Name the things it happened to.
+      Everything on screen is then a question asked of that record, answered live.
+      It is never a second copy of it.
+    </p>
+
+    <figure
+      id="atlas-about-figure"
+      class="sketch"
+    >
+      <img
+        src={~p"/images/atlas-ideas.png"}
+        alt="A sketch in three boxes. An activity stream, drawn as a timeline of dated events. Plus structured elements: entities, relationships, facets and truth states. Equals real-time, contextual tools: a timeline, a map, a graph, a record and filters. Underneath: a view changes what is read, never what was recorded."
+        width="1600"
+        height="911"
+        loading="lazy"
+      />
+    </figure>
+
+    <h2 id="atlas-about-why">Where it comes from</h2>
+
+    <p>
+      Atlas started from two wants.
+    </p>
+
+    <ul class="index">
+      <li>
+        Better interfaces for The Public Record
+        <span class="desc">— for anyone who wants to know what their government decided, and why</span>
+      </li>
+      <li>
+        Better tools for public decision-makers
+        <span class="desc">— for the people who have to decide, with the record in front of them</span>
+      </li>
+    </ul>
+
+    <p>
+      They are the same problem seen from two chairs.
+      The record exists, it is public, and it is very hard to use.
+    </p>
+
+    <h2 id="atlas-about-aim">What it is reaching for</h2>
+
+    <p>
+      Situational awareness, at a higher level than any one document gives.
+      Not only what happened, but what it touches, how sure anyone is, and who is looking at it from where.
+    </p>
+
+    <ul class="index">
+      <li>
+        relations, said out loud
+        <span class="desc">— what connects to what is part of the information, conveyed explicitly, not left for each reader to work out alone</span>
+      </li>
+      <li>
+        a single source of truth
+        <span class="desc">— one record, so everybody is on the same page, including about what is still disputed</span>
+      </li>
+      <li>
+        perspectives made explicit
+        <span class="desc">— which sources, which dates, which axes: the way you are looking is on the screen, and travels with the link</span>
+      </li>
+    </ul>
+
+    <p>
+      The third is the one that changes conversations.
+      Most disagreement about public matters is partly a disagreement about what each person is looking at, and that part usually goes unsaid.
+      When the record is shared and each perspective on it is visible, people can talk about how they are seeing as well as what they see.
+      That is meta-communication, and it is the level Atlas wants to raise.
+    </p>
+
+    <p class="muted">
+      A single source of truth is not a single opinion.
+      The record holds what was asserted, by whom, and how settled it is.
+      Being on the same page means reading the same record, not reaching the same conclusion.
+    </p>
+
+    <h2>The trouble with how The Public Record arrives</h2>
+
+    <p>
+      A city's decisions reach the public as documents.
+      A staff report, an agenda, a plan, a spreadsheet of payments.
+      Each one is a snapshot, and each is published somewhere different.
+    </p>
+
+    <p>
+      So the questions a resident has are hard to answer.
+      What changed, and when?
+      Who said so, and how sure are they?
+      Is this a proposal, a decision, or something already built?
+      What else is this connected to?
+    </p>
+
+    <p>
+      A decision-maker has the same questions, the night before a vote, with a four-hundred-page packet.
+      What did we already adopt that this touches?
+      What was promised, and was it delivered?
+      What is still only a claim?
+      The answers are in the record.
+      Nothing puts them in front of the person deciding.
+    </p>
+
+    <h2>Record what happened, once</h2>
+
+    <p>
+      Atlas keeps one thing: a stream of events, in order.
+      A plan was proposed.
+      A commission adopted it.
+      A payment was made.
+      A resident asked a question.
+    </p>
+
+    <p>
+      The stream is only ever added to.
+      Nothing in it is edited and nothing is deleted.
+      When something turns out to be wrong, the correction is a new event that points at the old one.
+      The mistake stays visible, and so does who fixed it.
+    </p>
+
+    <h2>Name the things it happened to</h2>
+
+    <p>
+      Events on their own are a diary.
+      They become useful when they name what they are about.
+    </p>
+
+    <ul class="index">
+      <li>
+        entities <span class="desc">— the plan, the park, the commission, the person</span>
+      </li>
+      <li>
+        relationships
+        <span class="desc">— this plan is funded by that budget line, and here is the event that says so</span>
+      </li>
+      <li>
+        facets
+        <span class="desc">— the parts an event may carry: a time, a place, a claim, an origin, a measure</span>
+      </li>
+      <li>
+        truth state
+        <span class="desc">— observed, reported, proposed, adopted, delivered, superseded</span>
+      </li>
+    </ul>
+
+    <p>
+      That is the whole structure.
+      There is no separate database of parks or plans to keep in step with the record.
+      A park is whatever the events say about it.
+    </p>
+
+    <h2>Every view is a question</h2>
+
+    <p>
+      The timeline asks when.
+      The map asks where.
+      The graph asks what is connected to what.
+      The record asks what one event says, down to the page it came from.
+    </p>
+
+    <p>
+      Each is worked out fresh from the stream, and any of them could be thrown away and rebuilt.
+      That is the rule the rest depends on:
+      <strong>a view changes what is read, never what was recorded.</strong>
+    </p>
+
+    <p>
+      It also means a new kind of view costs very little.
+      If an event carries a place, it shows up on the map.
+      If it does not, the map says how many it could not place, rather than quietly leaving them out.
+    </p>
+
+    <h2>Say how you know</h2>
+
+    <p>
+      Every event carries how settled it is.
+      Something we saw directly is not the same as something a source reported.
+      A proposal is not an adoption, and an adoption is not a finished park.
+      Atlas shows that difference on every row instead of flattening it into "news".
+    </p>
+
+    <p>
+      Every event also carries where it came from: the document, the section, a fingerprint of the original.
+      You can always walk back to the source.
+    </p>
+
+    <p>
+      Atlas can offer a plain-language explanation of a record, written by a language model.
+      It is labelled as that, it is shown and not stored, and it never becomes part of the record.
+      The record is what people and sources assert.
+      A paraphrase is neither.
+    </p>
+
+    <h2>Filters you can see</h2>
+
+    <p>
+      The page always shows the whole: how many events there are, across what dates.
+      Each filter then visibly narrows it, by source, by date, by truth state, by entity.
+      What a filter removes stays on screen, greyed, rather than vanishing.
+      You should never have to wonder how you arrived at what you are looking at.
+    </p>
+
+    <p>
+      The whole view lives in the address bar.
+      A link carries your perspective: what you selected, every filter, how the axes were set.
+      Send it to someone and they are asked the same question of the same record.
+      So a perspective is something you can hand over, compare and argue with, not something hidden behind a screenshot.
+    </p>
+
+    <h2>People add, they do not overwrite</h2>
+
+    <p>
+      A reader can respond to any event with an observation, a question, a correction or a source.
+      Each response is its own event, with its own author, beside the thing it is about.
+      A question stays open until another event answers it.
+      A correction disputes the original without replacing it.
+    </p>
+
+    <p>
+      This is where the two wants meet.
+      Residents, staff and decision-makers read the same record and add to the same record.
+      A better interface for the public and a better tool for the dais turn out to be one thing, looked at by different people.
+      They stay in one loop, and no one has to own the loop for it to work.
+    </p>
+
+    <h2>Where it is now</h2>
+
+    <p class="small">
+      Atlas runs today on a small demonstration record of one city's growth-area plan.
+      The sources are fixtures, not live feeds.
+      The ideas above are the parts that are built.
+      Connecting real sources is the work ahead.
+    </p>
+
+    <p>
+      <a
+        href={~p"/atlas"}
+        class="button"
+      >
+        open atlas
+      </a>
+    </p>
+  </article>
+</Layouts.app>

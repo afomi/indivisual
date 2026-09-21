@@ -143,4 +143,41 @@ defmodule Indivisual.ExplainTest do
       assert {:error, :unavailable} = Explain.explain_event(event(), [])
     end
   end
+
+  describe "models a reader can choose between" do
+    test "come from the adapter" do
+      assert Explain.models() == {:ok, ["fake-small", "fake-large"]}
+    end
+
+    test "the cache is per model: one's words are not another's" do
+      e = event()
+      Indivisual.Explain.Cache.clear()
+
+      assert {:ok, small} = Explain.explain_event(e, [e], model: "fake-small")
+      assert {:ok, large} = Explain.explain_event(e, [e], model: "fake-large")
+
+      assert small =~ "(fake-small)"
+      assert large =~ "(fake-large)"
+      assert Explain.cached?(e, "fake-small")
+      assert Explain.cached?(e, "fake-large")
+      refute Explain.cached?(e, "never-asked")
+    end
+
+    test "Ollama's list is filtered to models that can write" do
+      embedding? = &Indivisual.Explain.Ollama.embedding?/1
+
+      # The shapes /api/tags really returns on this machine.
+      assert embedding?.(%{
+               "name" => "nomic-embed-text:latest",
+               "details" => %{"family" => "nomic-bert"}
+             })
+
+      assert embedding?.(%{"name" => "qwen3-embedding:8b", "details" => %{"family" => "qwen3"}})
+      assert embedding?.(%{"name" => "all-minilm", "details" => %{"families" => ["bert"]}})
+
+      refute embedding?.(%{"name" => "qwen3:8b", "details" => %{"family" => "qwen3"}})
+      refute embedding?.(%{"name" => "llama3.2:1b", "details" => %{"family" => "llama"}})
+      refute embedding?.(%{"name" => "no-details"})
+    end
+  end
 end

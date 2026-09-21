@@ -66,3 +66,7 @@ config :ueberauth, Ueberauth.Strategy.Github.OAuth,
 
 # Explanations never reach the network in tests.
 config :indivisual, Indivisual.Explain, adapter: Indivisual.Explain.Fake
+
+# Layouts still being worked out (Spacetime, Moment, Graph). Prod never sets
+# this, so a reader is offered only the finished views.
+config :indivisual, unreleased_layouts: true

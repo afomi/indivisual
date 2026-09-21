@@ -43,11 +43,11 @@ defmodule Indivisual.Atlas.Glossary do
       why: "Every event is traceable to who asserted it — nothing here is anonymous."
     },
     "stream" => %{
-      label: "Stream",
+      label: "Feed",
       summary:
-        "The source's own ordering: which series this event belongs to, and its position in it.",
+        "The series the source published this record in — an account's posts, an RSS feed's items, a chain's transactions — and this record's place in it.",
       why:
-        "It preserves the publisher's sequence, so events stay in the order the source put them in even when timestamps tie."
+        "A feed keeps the publisher's own order, so records stay in the sequence the source put them in even when timestamps tie, and you can walk a feed from one record to the next."
     },
     "affects" => %{
       label: "Affects",

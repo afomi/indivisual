@@ -1,0 +1,47 @@
+<%!-- The ✕ sits OUTSIDE the chip, to its left: the chip names a filter and
+the button removes it, so the button is not part of the thing it acts on. The
+pair share a wrapper so they read as one control, and the chip keeps its own
+border unbroken. --%>
+<span class={["atlas-chipgroup", is_nil(@clear) && "is-readonly"]}>
+  <button
+    :if={@clear}
+    type="button"
+    id={"#{@id}-clear"}
+    phx-click={@clear}
+    class="atlas-entitychip__clear"
+    aria-label={@clear_label}
+    title={@clear_label}
+  >
+    <span aria-hidden="true">✕</span>
+  </button>
+  <span
+    id={@id}
+    class={[
+      "atlas-entitychip",
+      @inline && "atlas-entitychip--inline",
+      is_nil(@clear) && "is-readonly"
+    ]}
+    data-filter={@filter}
+  >
+    <span class="atlas-entitychip__label">
+      {@label}
+    </span>
+    <.entity_icon
+      :if={@kind}
+      kind={@kind}
+    />
+    <span
+      class="atlas-entitychip__name"
+      title={@title || @value}
+    >
+      {@value}
+    </span>
+    <span
+      :if={@count}
+      id={"#{@id}-count"}
+      class="atlas-srcfilter__count"
+    >
+      {@count}
+    </span>
+  </span>
+</span>

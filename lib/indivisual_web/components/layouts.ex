@@ -33,17 +33,21 @@ defmodule IndivisualWeb.Layouts do
 
   attr :full, :boolean,
     default: false,
-    doc: "drop the reading-measure and padding, for full-viewport pages like /topo"
+    doc: "drop the reading-measure and padding, for full-viewport pages like /atlas"
 
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
+    <%!-- Before the content, not after it: a message about what just happened
+    belongs where the reader is looking, and below a long page it is never seen.
+    (It used to rely on a component library's `toast` class to float it to the
+    top right; that library was never loaded.) --%>
+    <.flash_group flash={@flash} />
+
     <main class={["wrap", @full && "wrap--full"]}>
       {render_slot(@inner_block)}
     </main>
-
-    <.flash_group flash={@flash} />
     """
   end
 
@@ -103,8 +107,8 @@ defmodule IndivisualWeb.Layouts do
   """
   def theme_toggle(assigns) do
     ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
-      <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 [[data-theme-source=system]_&]:!left-0 transition-[left]" />
+    <div class="relative flex flex-row items-center border-2 border-[var(--rule)] bg-[var(--rule)] rounded-full">
+      <div class="absolute w-1/3 h-full rounded-full border-1 border-[var(--rule)] bg-[var(--paper)] brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 [[data-theme-source=system]_&]:!left-0 transition-[left]" />
 
       <button
         class="flex p-2 cursor-pointer w-1/3"

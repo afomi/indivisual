@@ -1,0 +1,53 @@
+<dl
+  id={@id}
+  class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600"
+  aria-live="polite"
+>
+  <div class="flex items-center gap-1">
+    <dt class="font-medium">
+      Data:
+    </dt>
+    <dd>
+      <span class="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800">
+        Demo fixture
+      </span>
+      No live blockchain or external API is connected.
+    </dd>
+  </div>
+  <div class="flex items-center gap-1">
+    <dt class="font-medium">
+      Feed:
+    </dt>
+    <dd id="atlas-live-status">
+      <%= if @live? do %>
+        live · {@live_updates} update(s) since load
+      <% else %>
+        connecting…
+      <% end %>
+    </dd>
+  </div>
+  <div class="flex items-center gap-1">
+    <dt class="font-medium">
+      Persistence:
+    </dt>
+    <dd id="atlas-persistence-status">
+      <%= case @status.persistence do %>
+        <% :ok -> %>
+          Postgres · {@status.persisted_count} appended event(s) kept across restarts
+        <% {:error, _reason} -> %>
+          <span class="rounded border border-red-300 bg-red-50 px-1.5 py-0.5 font-medium text-red-800">
+            unavailable
+          </span>
+          Appends are refused until the store is reachable.
+      <% end %>
+    </dd>
+  </div>
+  <div class="flex items-center gap-1">
+    <dt class="font-medium">
+      Events:
+    </dt>
+    <dd id="atlas-event-count">
+      {@event_count}
+    </dd>
+  </div>
+</dl>

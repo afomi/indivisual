@@ -1,0 +1,64 @@
+<.form
+  for={@form}
+  id={@id}
+  phx-change="validate_annotation"
+  phx-submit="annotate"
+  class="mt-3 space-y-2 border-t border-slate-200 pt-3"
+>
+  <h3 class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+    Annotate
+  </h3>
+  <%= for {field, message} <- @errors do %>
+    <p
+      class="text-xs text-red-700"
+      role="alert"
+    >
+      {field} {message}
+    </p>
+  <% end %>
+  <div class="grid grid-cols-2 gap-2">
+    <label class="text-xs">
+      Kind
+      <select
+        name={@form[:kind].name}
+        class="mt-0.5 w-full rounded border-slate-300 text-xs"
+      >
+        <%= for kind <- @kinds do %>
+          <option
+            value={kind}
+            selected={@form[:kind].value == kind}
+          >
+            {kind}
+          </option>
+        <% end %>
+      </select>
+    </label>
+    <label class="text-xs">
+      Author
+      <input
+        type="text"
+        name={@form[:author].name}
+        value={@form[:author].value}
+        placeholder="your name or handle"
+        class="mt-0.5 w-full rounded border-slate-300 text-xs"
+      />
+    </label>
+  </div>
+  <label class="block text-xs">
+    Note <textarea
+      name={@form[:body].name}
+      rows="2"
+      placeholder="Specific and checkable: what did you observe, question, or correct?"
+      class="mt-0.5 w-full rounded border-slate-300 text-xs"
+    >{@form[:body].value}</textarea>
+  </label>
+  <button
+    type="submit"
+    class="rounded bg-slate-900 px-3 py-1 text-xs font-medium text-white"
+  >
+    Record annotation
+  </button>
+  <p class="text-[11px] text-slate-500">
+    Recorded as a separate event in this session's in-memory feed with your name as author.
+  </p>
+</.form>

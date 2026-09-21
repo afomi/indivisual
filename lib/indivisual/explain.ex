@@ -30,6 +30,14 @@ defmodule Indivisual.Explain do
   @callback explain(prompt :: String.t(), opts :: keyword()) ::
               {:ok, String.t()} | {:error, term()}
 
+  @doc """
+  The models this backend can explain with, by name. Optional: a backend with one
+  fixed model need not implement it, and `models/0` then offers the configured one.
+  """
+  @callback models() :: {:ok, [String.t()]} | {:error, term()}
+
+  @optional_callbacks models: 0
+
   @doc "Whether an explanation backend is configured and enabled."
   def available?, do: Keyword.get(config(), :enabled, true) and not is_nil(adapter())
 
@@ -38,6 +46,29 @@ defmodule Indivisual.Explain do
 
   @doc "The configured model name."
   def model, do: Keyword.get(config(), :model, "qwen3:8b")
+
+  @doc """
+  The models a reader may choose between, by name.
+
+  `{:ok, names}` — possibly empty, when the backend is up but has nothing that
+  can write — or `{:error, reason}` (`:unavailable` when there is no backend or
+  it cannot be reached). The configured model is not added to the list: if it is
+  not installed, offering it would only move the failure to the next click.
+  """
+  def models do
+    cond do
+      not available?() ->
+        {:error, :unavailable}
+
+      # `function_exported?/3` is false for a module not yet loaded, which would
+      # quietly offer one model instead of all of them.
+      Code.ensure_loaded?(adapter()) and function_exported?(adapter(), :models, 0) ->
+        adapter().models()
+
+      true ->
+        {:ok, [model()]}
+    end
+  end
 
   @doc "Base URL of the backend."
   def url, do: Keyword.get(config(), :url, "http://localhost:11434")
@@ -49,11 +80,16 @@ defmodule Indivisual.Explain do
   is configured or reachable.
   """
   def explain_event(%Event{} = event, events, opts \\ []) do
+    # The model is part of what was asked, so it is part of the cache key: one
+    # model's paraphrase must never be served as another's.
+    model = Keyword.get(opts, :model) || model()
+    opts = Keyword.put(opts, :model, model)
+
     cond do
       not available?() ->
         {:error, :unavailable}
 
-      cached = Keyword.get(opts, :cache, true) && Cache.get(event) ->
+      cached = Keyword.get(opts, :cache, true) && Cache.get(event, model) ->
         {:ok, cached}
 
       true ->
@@ -61,14 +97,15 @@ defmodule Indivisual.Explain do
         |> prompt_for(events, Keyword.get(opts, :sources, %{}))
         |> adapter().explain(opts)
         |> tap(fn
-          {:ok, text} -> Cache.put(event, text)
+          {:ok, text} -> Cache.put(event, model, text)
           _ -> :ok
         end)
     end
   end
 
-  @doc "Whether an explanation for this event is already cached."
-  def cached?(%Event{} = event), do: not is_nil(Cache.get(event))
+  @doc "Whether an explanation for this event, by this model, is already cached."
+  def cached?(%Event{} = event, model \\ nil),
+    do: not is_nil(Cache.get(event, model || model()))
 
   @doc """
   Builds the prompt for one event.

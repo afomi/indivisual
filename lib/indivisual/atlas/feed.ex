@@ -24,6 +24,7 @@ defmodule Indivisual.Atlas.Feed do
   use GenServer
 
   alias Indivisual.Atlas.Event
+  alias Indivisual.Atlas.Post
   alias Indivisual.Atlas.Source
   alias Indivisual.Atlas.Sources.Annotations
   alias Indivisual.Atlas.Store
@@ -80,6 +81,13 @@ defmodule Indivisual.Atlas.Feed do
   def annotate(server \\ __MODULE__, about_id, attrs),
     do: GenServer.call(server, {:annotate, about_id, attrs})
 
+  @doc """
+  Appends a plain note (an `Indivisual.Atlas.Post` about nothing else).
+  `opts`: `:mentions`, entity refs the note is about.
+  """
+  def post(server \\ __MODULE__, attrs, opts \\ []),
+    do: GenServer.call(server, {:post, attrs, opts})
+
   @doc "Rebuilds the log from the source adapters plus the persisted store."
   def reset(server \\ __MODULE__), do: GenServer.call(server, :reset)
 
@@ -134,6 +142,16 @@ defmodule Indivisual.Atlas.Feed do
     end
   end
 
+  # Notes share the annotations' counter: both are posts, from one source.
+  def handle_call({:post, attrs, opts}, _from, state) do
+    seq = state.annotation_seq + 1
+
+    case Post.build(attrs, seq, mentions: opts[:mentions] || []) do
+      {:ok, event} -> do_append(event, %{state | annotation_seq: seq})
+      {:error, errors} -> {:reply, {:error, errors}, state}
+    end
+  end
+
   def handle_call(:reset, _from, state) do
     {:reply, :ok, load(state.adapter_modules)}
   end
@@ -163,7 +181,15 @@ defmodule Indivisual.Atlas.Feed do
   defp persist(event) do
     Store.append(event)
   rescue
-    error in [Postgrex.Error, DBConnection.ConnectionError, DBConnection.OwnershipError] ->
+    # EncodeError too: a value the column cannot hold (a sequence past int4, say)
+    # is a bad EVENT, and must be refused like one. Unrescued it took the whole
+    # feed down — every reader's page — for one writer's malformed append.
+    error in [
+      Postgrex.Error,
+      DBConnection.ConnectionError,
+      DBConnection.OwnershipError,
+      DBConnection.EncodeError
+    ] ->
       {:error, {:persistence, Exception.message(error)}}
   end
 
