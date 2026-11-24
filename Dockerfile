@@ -43,7 +43,7 @@ ENV MIX_ENV="prod"
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
-RUN mix deps.get --only $MIX_ENV
+RUN mix deps.get --only $MIX_ENV --check-locked
 RUN mkdir config
 
 # copy compile-time config files before we compile dependencies
@@ -71,10 +71,10 @@ RUN mix compile
 COPY assets assets
 
 # /topo bundles three.js from assets/node_modules, so the npm deps must be
-# installed before esbuild runs. `npm ci` needs a lockfile; fall back to
-# `npm install` when one isn't committed yet.
+# installed before esbuild runs. `npm ci` installs exactly what
+# assets/package-lock.json pins and fails if the lockfile is out of date.
 RUN cd assets \
-  && (npm ci --no-audit --no-fund || npm install --no-audit --no-fund) \
+  && npm ci --no-audit --no-fund \
   && test -d node_modules/three
 
 # compile assets
