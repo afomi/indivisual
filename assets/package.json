@@ -4,6 +4,6 @@
   "private": true,
   "description": "Client-side deps. `three` powers the /topo 3D semantic-axis scatter.",
   "dependencies": {
-    "three": "^0.181.2"
+    "three": "^0.187.0"
   }
 }
